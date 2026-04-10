@@ -5,6 +5,7 @@ import Nav from '@/components/Nav'
 export const metadata = {
   title: 'ProofWork — UK Jobs with Full Transparency',
   description: 'Every employer shows salary, benefits, and progression. Apply with proof of skill.',
+  verification: { google: 'l5uUw6kpeSvN8gaSWZL1v4A94-wVKnb7T0RM1FgVbzA' },
 }
 
 export default function RootLayout({ children }) {
