@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
@@ -34,13 +34,12 @@ const LOCATIONS = ['London','Manchester','Edinburgh','Bristol','Brighton','Birmi
 
 export default function PostJobPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const editId = searchParams.get('edit')
+  const [editId, setEditId] = useState(null)
   const { user, profile, loading: authLoading } = useAuth()
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(0)
   const [error, setError] = useState('')
-  const [loadingJob, setLoadingJob] = useState(!!editId)
+  const [loadingJob, setLoadingJob] = useState(false)
 
   const [form, setForm] = useState({
     title: '',
@@ -53,6 +52,15 @@ export default function PostJobPage() {
     requirements: '',
     tags: [],
   })
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const eid = params.get('edit')
+    if (eid) {
+      setEditId(eid)
+      setLoadingJob(true)
+    }
+  }, [])
 
   useEffect(() => {
     if (authLoading) return
@@ -90,11 +98,9 @@ export default function PostJobPage() {
     }))
   }
 
-  // Smart tag suggestions based on job title
   const suggestedCategories = useMemo(() => {
     const title = form.title.toLowerCase()
     if (!title) return ['General']
-    
     const matched = []
     for (const mapping of TITLE_CATEGORY_MAP) {
       if (mapping.keywords.some(kw => title.includes(kw))) {
@@ -102,18 +108,9 @@ export default function PostJobPage() {
       }
     }
     if (matched.length === 0) matched.push('General')
-    // Always include General as a fallback
     if (!matched.includes('General')) matched.push('General')
     return [...new Set(matched)]
   }, [form.title])
-
-  const suggestedTags = useMemo(() => {
-    const tags = []
-    for (const cat of suggestedCategories) {
-      if (TAG_CATEGORIES[cat]) tags.push(...TAG_CATEGORIES[cat])
-    }
-    return [...new Set(tags)]
-  }, [suggestedCategories])
 
   function slugify(text) {
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 100)
@@ -248,7 +245,7 @@ export default function PostJobPage() {
               <input type="number" value={form.salary_max} onChange={e => update('salary_max', e.target.value)} placeholder="e.g. 95000" className="w-full px-3 py-2.5 rounded-md border border-pw-border bg-pw-bg text-sm text-pw-text1" />
             </div>
           </div>
-          <div className="text-[10px] text-pw-green mb-3">Salary is mandatory on ProofWork — it's what makes candidates trust your listing.</div>
+          <div className="text-[10px] text-pw-green mb-3">Salary is mandatory on ProofWork.</div>
           <div className="mb-3">
             <label className="text-xs font-semibold text-pw-text3 mb-1 block">Job type</label>
             <div className="flex gap-2">
@@ -275,7 +272,7 @@ export default function PostJobPage() {
           <div className="mb-4">
             <label className="text-xs font-semibold text-pw-text3 mb-2 block">
               Skills & tags
-              {form.title && <span className="text-pw-green font-normal ml-2">— suggestions for "{form.title}"</span>}
+              {form.title && <span className="text-pw-green font-normal ml-2">— suggestions for &quot;{form.title}&quot;</span>}
             </label>
             {suggestedCategories.map(cat => (
               <div key={cat} className="mb-3">
