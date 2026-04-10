@@ -7,7 +7,7 @@ export default async function sitemap() {
     .eq('active', true)
 
   const jobUrls = (jobs || []).map(job => ({
-    url: `https://proofwork.vercel.app/jobs/${job.slug}`,
+    url: `https://proofwork-nine.vercel.app/jobs/${job.slug}`,
     lastModified: job.updated_at || new Date().toISOString(),
     changeFrequency: 'weekly',
     priority: 0.8,
@@ -15,13 +15,13 @@ export default async function sitemap() {
 
   return [
     {
-      url: 'https://proofwork.vercel.app',
+      url: 'https://proofwork-nine.vercel.app',
       lastModified: new Date().toISOString(),
       changeFrequency: 'daily',
       priority: 1,
     },
     {
-      url: 'https://proofwork.vercel.app/jobs',
+      url: 'https://proofwork-nine.vercel.app/jobs',
       lastModified: new Date().toISOString(),
       changeFrequency: 'daily',
       priority: 0.9,

@@ -5,6 +5,6 @@ export default function robots() {
       allow: '/',
       disallow: ['/dashboard/', '/login', '/signup'],
     },
-    sitemap: 'https://proofwork.vercel.app/sitemap.xml',
+    sitemap: 'https://proofwork-nine.vercel.app/sitemap.xml',
   }
 }
