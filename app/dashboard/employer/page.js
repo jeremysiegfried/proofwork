@@ -77,6 +77,14 @@ export default function EmployerDashboard() {
             {jobs.length} active jobs · {applications.length} total applications
           </p>
         </div>
+        <div className="flex gap-2">
+          <Link href="/dashboard/employer/company" className="px-4 py-2 rounded-lg border border-pw-border text-pw-text2 text-xs font-semibold hover:text-pw-text1 hover:bg-pw-card transition-all">
+            Company profile
+          </Link>
+          <Link href="/dashboard/employer/post" className="px-4 py-2 rounded-lg bg-pw-green text-black text-xs font-bold hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
+            + Post a job
+          </Link>
+        </div>
       </div>
 
       {jobs.length === 0 ? (
