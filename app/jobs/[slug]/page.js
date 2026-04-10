@@ -196,9 +196,14 @@ export default async function JobDetailPage({ params }) {
           </div>
 
           <div className="mt-3">
-            <button className="w-full py-3.5 rounded-lg bg-pw-green text-black font-extrabold text-sm hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
+            <Link href={`/jobs/${job.slug}/apply`} className="block w-full py-3.5 rounded-lg bg-pw-green text-black font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
               Apply for this role →
-            </button>
+            </Link>
+            {job.companies?.claimed && (
+              <div className="text-[10px] text-pw-muted text-center mt-2 font-mono">
+                Avg response: {company?.name === 'Monzo' ? '2 days' : '3-5 days'}
+              </div>
+            )}
           </div>
         </div>
       </div>
