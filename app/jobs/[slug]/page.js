@@ -242,13 +242,35 @@ export default async function JobDetailPage({ params }) {
           </div>
 
           <div className="mt-3">
-            <Link href={`/jobs/${job.slug}/apply`} className="block w-full py-3.5 rounded-lg bg-pw-green text-black font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
-              Apply for this role →
-            </Link>
-            {job.companies?.claimed && (
-              <div className="text-[10px] text-pw-muted text-center mt-2 font-mono">
-                Avg response: {company?.name === 'Monzo' ? '2 days' : '3-5 days'}
-              </div>
+            {claimed ? (
+              <>
+                <Link href={`/jobs/${job.slug}/apply`} className="block w-full py-3.5 rounded-lg bg-pw-green text-black font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
+                  Apply via ProofWork →
+                </Link>
+                <div className="text-[10px] text-pw-muted text-center mt-2 font-mono">
+                  Application tracked · avg response 3-5 days
+                </div>
+              </>
+            ) : (
+              <>
+                {job.source_url ? (
+                  <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-pw-amber text-black font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-amber-500/20 transition-all">
+                    Apply on {company?.name || 'company'} site →
+                  </a>
+                ) : (
+                  <a href={company?.careers_url || company?.website || '#'} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-pw-amber text-black font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-amber-500/20 transition-all">
+                    Visit {company?.name || 'company'} careers →
+                  </a>
+                )}
+                <div className="text-[10px] text-pw-amber text-center mt-2 font-mono">
+                  Redirects to employer's site · not tracked
+                </div>
+                <div className="mt-3 p-3 bg-pw-card border border-pw-border rounded-lg">
+                  <div className="text-xs text-pw-text2 leading-relaxed">
+                    <strong className="text-pw-text1">Want to apply through ProofWork?</strong> Ask {company?.name} to <span className="text-pw-green">claim this listing</span> for tracked applications and skill challenges.
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>
