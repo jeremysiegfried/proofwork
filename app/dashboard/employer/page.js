@@ -110,16 +110,17 @@ export default function EmployerDashboard() {
               {jobs.map(job => {
                 const count = applications.filter(a => a.job_id === job.id).length
                 return (
-                  <button
-                    key={job.id}
-                    onClick={() => setSelectedJob(job.id)}
-                    className={`text-left px-3 py-2.5 rounded-lg text-sm transition-all ${
-                      selectedJob === job.id ? 'bg-pw-greenDark border border-pw-green/20 text-pw-green' : 'bg-pw-card border border-pw-border text-pw-text2 hover:text-pw-text1'
-                    }`}
-                  >
-                    <div className="font-semibold truncate">{job.title}</div>
-                    <div className="text-[10px] text-pw-muted font-mono mt-0.5">{count} applications</div>
-                  </button>
+                  <div key={job.id} className={`px-3 py-2.5 rounded-lg text-sm transition-all ${
+                    selectedJob === job.id ? 'bg-pw-greenDark border border-pw-green/20' : 'bg-pw-card border border-pw-border'
+                  }`}>
+                    <button onClick={() => setSelectedJob(job.id)} className="text-left w-full">
+                      <div className={`font-semibold truncate ${selectedJob === job.id ? 'text-pw-green' : 'text-pw-text2 hover:text-pw-text1'}`}>{job.title}</div>
+                      <div className="text-[10px] text-pw-muted font-mono mt-0.5">{count} apps · trust {job.trust_score}</div>
+                    </button>
+                    <Link href={`/dashboard/employer/post?edit=${job.id}`} className="text-[10px] text-pw-muted hover:text-pw-green mt-1 inline-block font-mono">
+                      Edit →
+                    </Link>
+                  </div>
                 )
               })}
             </div>
