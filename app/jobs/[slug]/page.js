@@ -8,7 +8,7 @@ export const revalidate = 300
 export async function generateMetadata({ params }) {
   const { data: job } = await supabase
     .from('jobs')
-    .select('title, companies(name)')
+    .select('title, salary_min, salary_max, location, description, companies(name)')
     .eq('slug', params.slug)
     .single()
 
@@ -16,7 +16,12 @@ export async function generateMetadata({ params }) {
   const salary = job.salary_min > 0 ? ` — £${Math.round(job.salary_min/1000)}k–${Math.round(job.salary_max/1000)}k` : ''
   return {
     title: `${job.title} at ${job.companies?.name}${salary} | ProofWork`,
-    description: `Apply for ${job.title} at ${job.companies?.name}. Full transparency: salary, benefits, and employer trust score.`,
+    description: `Apply for ${job.title} at ${job.companies?.name} in ${job.location}. ${job.salary_min > 0 ? `Salary: £${Math.round(job.salary_min/1000)}k–${Math.round(job.salary_max/1000)}k. ` : ''}Full transparency: salary, benefits, and employer trust score.`,
+    openGraph: {
+      title: `${job.title} at ${job.companies?.name}${salary}`,
+      description: job.description?.substring(0, 160),
+      type: 'website',
+    },
   }
 }
 
@@ -53,8 +58,49 @@ export default async function JobDetailPage({ params }) {
   const hasProg = company?.progression?.length > 0
   const hasSat = company?.satisfaction > 0
 
+  // JSON-LD for Google Jobs
+  const jsonLd = {
+    '@context': 'https://schema.org/',
+    '@type': 'JobPosting',
+    title: job.title,
+    description: job.description,
+    datePosted: job.posted_at || job.created_at,
+    hiringOrganization: {
+      '@type': 'Organization',
+      name: company?.name,
+      sameAs: company?.website || undefined,
+    },
+    jobLocation: {
+      '@type': 'Place',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: job.location,
+        addressCountry: 'GB',
+      },
+    },
+    employmentType: job.job_type === 'Full-time' ? 'FULL_TIME' : job.job_type === 'Part-time' ? 'PART_TIME' : 'CONTRACTOR',
+  }
+
+  if (hasSalary) {
+    jsonLd.baseSalary = {
+      '@type': 'MonetaryAmount',
+      currency: 'GBP',
+      value: {
+        '@type': 'QuantitativeValue',
+        minValue: job.salary_min,
+        maxValue: job.salary_max,
+        unitText: 'YEAR',
+      },
+    }
+  }
+
+  if (job.remote_policy === 'Remote') {
+    jsonLd.jobLocationType = 'TELECOMMUTE'
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Link href="/jobs" className="text-xs text-pw-muted hover:text-pw-text2 transition-colors mb-4 inline-block">← All jobs</Link>
 
       {/* Header */}
