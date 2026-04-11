@@ -30,13 +30,13 @@ export default function JobCard({ job, company }) {
 
             {/* Salary */}
             <div className="flex items-center gap-2 flex-wrap mb-2">
-              {hasSalary ? (
+              {hasSalary && job.salary_min !== job.salary_max ? (
                 <span className="font-mono text-base font-bold text-pw-green">
                   £{Math.round(job.salary_min/1000)}k–{Math.round(job.salary_max/1000)}k
                 </span>
-              ) : job.salary_estimated ? (
+              ) : hasSalary && job.salary_min === job.salary_max ? (
                 <span className="font-mono text-sm text-pw-amber">
-                  Est. {job.salary_estimated} <span className="text-pw-muted text-[10px]">(unverified)</span>
+                  ~£{Math.round(job.salary_min/1000)}k <span className="text-pw-muted text-[10px]">(estimated)</span>
                 </span>
               ) : (
                 <span className="font-mono text-sm text-pw-muted">Salary not disclosed</span>

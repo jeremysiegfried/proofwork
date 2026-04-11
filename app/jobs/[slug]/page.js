@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import TrustRing from '@/components/TrustRing'
+import JobDescription from '@/components/JobDescription'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -117,10 +118,10 @@ export default async function JobDetailPage({ params }) {
             </div>
             <p className="text-sm text-pw-text2">{company?.name} · {job.location} · {job.remote_policy}</p>
             <div className="flex items-center gap-3 mt-3 flex-wrap">
-              {hasSalary ? (
+              {hasSalary && job.salary_min !== job.salary_max ? (
                 <span className="font-mono text-xl font-bold text-pw-green">£{Math.round(job.salary_min/1000)}k–{Math.round(job.salary_max/1000)}k</span>
-              ) : job.salary_estimated ? (
-                <span className="font-mono text-base text-pw-amber">Est. {job.salary_estimated} <span className="text-pw-muted text-xs">(unverified)</span></span>
+              ) : hasSalary && job.salary_min === job.salary_max ? (
+                <span className="font-mono text-lg text-pw-amber">~£{Math.round(job.salary_min/1000)}k <span className="text-xs text-pw-muted font-normal">(estimated)</span></span>
               ) : null}
               {job.has_challenge && (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-pw-greenDark text-pw-green font-bold border border-pw-green/20">⚡ Skill challenge</span>
@@ -144,7 +145,7 @@ export default async function JobDetailPage({ params }) {
         {/* Main content */}
         <div>
           <div className="bg-pw-card border border-pw-border rounded-xl p-5">
-            <p className="text-sm text-pw-text3 leading-relaxed mb-5">{job.description}</p>
+            <JobDescription text={job.description} />
 
             {job.requirements?.length > 0 && (
               <div className="mb-5">
