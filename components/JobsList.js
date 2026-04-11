@@ -1,77 +1,124 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import JobCard from './JobCard'
+import { supabase } from '@/lib/supabase'
 
-const REGIONS = ['All', 'London', 'Manchester', 'Edinburgh', 'Bristol', 'Brighton', 'Remote']
-const SORTS = [
-  { key: 'trust', label: 'Trust score' },
-  { key: 'salary', label: 'Salary' },
-  { key: 'recent', label: 'Newest' },
-]
+const REGIONS = ['All', 'London', 'Manchester', 'Edinburgh', 'Bristol', 'Brighton', 'Birmingham', 'Leeds', 'Glasgow', 'Remote']
+const PAGE_SIZE = 30
 
-export default function JobsList({ initialJobs }) {
+export default function JobsList() {
+  const [jobs, setJobs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [query, setQuery] = useState('')
   const [region, setRegion] = useState('All')
   const [sort, setSort] = useState('trust')
   const [showVerifiedOnly, setShowVerifiedOnly] = useState(false)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
+  const [searchTimeout, setSearchTimeout] = useState(null)
 
-  const filtered = useMemo(() => {
-    let jobs = [...initialJobs]
+  const fetchJobs = useCallback(async (pageNum, append) => {
+    if (pageNum === 0) setLoading(true)
+    else setLoadingMore(true)
+
+    let q = supabase
+      .from('jobs')
+      .select('*, companies!inner(*)', { count: 'exact' })
+      .eq('active', true)
 
     // Search
-    if (query) {
-      const q = query.toLowerCase()
-      jobs = jobs.filter(j =>
-        j.title.toLowerCase().includes(q) ||
-        j.companies?.name?.toLowerCase().includes(q) ||
-        (j.tags || []).some(t => t.toLowerCase().includes(q))
-      )
+    if (query.trim()) {
+      q = q.or(`title.ilike.%${query}%,description.ilike.%${query}%,companies.name.ilike.%${query}%`)
     }
 
-    // Region
+    // Region filter
     if (region === 'Remote') {
-      jobs = jobs.filter(j => j.remote_policy?.toLowerCase().includes('remote'))
+      q = q.ilike('remote_policy', '%Remote%')
     } else if (region !== 'All') {
-      jobs = jobs.filter(j => j.location?.includes(region))
+      q = q.eq('location', region)
     }
 
     // Verified only
     if (showVerifiedOnly) {
-      jobs = jobs.filter(j => j.companies?.claimed)
+      q = q.eq('companies.claimed', true)
     }
 
     // Sort
     if (sort === 'salary') {
-      jobs.sort((a, b) => b.salary_min - a.salary_min)
-    } else if (sort === 'trust') {
-      jobs.sort((a, b) => b.trust_score - a.trust_score)
+      q = q.order('salary_min', { ascending: false })
     } else if (sort === 'recent') {
-      jobs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      q = q.order('created_at', { ascending: false })
+    } else {
+      q = q.order('trust_score', { ascending: false })
     }
 
-    return jobs
-  }, [initialJobs, query, region, sort, showVerifiedOnly])
+    // Pagination
+    const from = pageNum * PAGE_SIZE
+    q = q.range(from, from + PAGE_SIZE - 1)
 
-  const verifiedCount = initialJobs.filter(j => j.companies?.claimed).length
-  const avgSalary = initialJobs.filter(j => j.salary_min > 0).length
+    const { data, error, count } = await q
+
+    if (error) {
+      console.error('Fetch error:', error)
+      setLoading(false)
+      setLoadingMore(false)
+      return
+    }
+
+    if (append) {
+      setJobs(prev => [...prev, ...(data || [])])
+    } else {
+      setJobs(data || [])
+    }
+
+    setTotalCount(count || 0)
+    setHasMore((data || []).length === PAGE_SIZE)
+    setLoading(false)
+    setLoadingMore(false)
+  }, [query, region, sort, showVerifiedOnly])
+
+  // Initial load and filter changes
+  useEffect(() => {
+    setPage(0)
+    fetchJobs(0, false)
+  }, [region, sort, showVerifiedOnly])
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeout) clearTimeout(searchTimeout)
+    const t = setTimeout(() => {
+      setPage(0)
+      fetchJobs(0, false)
+    }, 300)
+    setSearchTimeout(t)
+    return () => clearTimeout(t)
+  }, [query])
+
+  function loadMore() {
+    const nextPage = page + 1
+    setPage(nextPage)
+    fetchJobs(nextPage, true)
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-6">
       <h1 className="font-display text-2xl font-black tracking-tight mb-1">Open roles</h1>
       <p className="text-xs text-pw-muted font-mono mb-4">
-        {filtered.length} jobs · {verifiedCount} verified · {avgSalary} show salary
+        {totalCount.toLocaleString()} jobs{query ? ` matching "${query}"` : ''}{region !== 'All' ? ` in ${region}` : ''}
       </p>
 
       {/* Search */}
       <input
         value={query}
         onChange={e => setQuery(e.target.value)}
-        placeholder="Search by title, company, or skill..."
+        placeholder="Search by title, company, or keyword..."
         className="w-full px-4 py-3 rounded-lg border border-pw-border bg-pw-card text-sm text-pw-text1 mb-3"
       />
 
-      {/* Filters row */}
+      {/* Filters */}
       <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
         <div className="flex gap-1.5 flex-wrap">
           {REGIONS.map(r => (
@@ -95,12 +142,16 @@ export default function JobsList({ initialJobs }) {
                 : 'border border-pw-border text-pw-muted hover:text-pw-text2'
             }`}
           >
-            ✓ Verified only
+            Verified only
           </button>
         </div>
 
         <div className="flex gap-1">
-          {SORTS.map(s => (
+          {[
+            { key: 'trust', label: 'Trust' },
+            { key: 'salary', label: 'Salary' },
+            { key: 'recent', label: 'Newest' },
+          ].map(s => (
             <button
               key={s.key}
               onClick={() => setSort(s.key)}
@@ -117,18 +168,50 @@ export default function JobsList({ initialJobs }) {
       </div>
 
       {/* Results */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-16">
+          <div className="text-pw-muted text-sm">Loading jobs...</div>
+        </div>
+      ) : jobs.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-pw-text2 mb-2">No jobs match your search</p>
-          <button onClick={() => { setQuery(''); setRegion('All'); setShowVerifiedOnly(false) }} className="text-pw-green text-sm hover:underline">
+          <button
+            onClick={() => { setQuery(''); setRegion('All'); setShowVerifiedOnly(false) }}
+            className="text-pw-green text-sm hover:underline"
+          >
             Clear filters
           </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {filtered.map(job => (
-            <JobCard key={job.id} job={job} company={job.companies} />
-          ))}
+        <div>
+          <div className="flex flex-col gap-2">
+            {jobs.map(job => (
+              <JobCard key={job.id} job={job} company={job.companies} />
+            ))}
+          </div>
+
+          {/* Load more */}
+          {hasMore && (
+            <div className="text-center mt-6">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className={`px-8 py-3 rounded-lg text-sm font-bold transition-all ${
+                  loadingMore
+                    ? 'bg-pw-border text-pw-muted'
+                    : 'bg-pw-card border border-pw-border text-pw-text1 hover:border-pw-green/30 hover:text-pw-green'
+                }`}
+              >
+                {loadingMore ? 'Loading...' : `Load more jobs (showing ${jobs.length} of ${totalCount.toLocaleString()})`}
+              </button>
+            </div>
+          )}
+
+          {!hasMore && jobs.length > 0 && (
+            <div className="text-center mt-6 text-xs text-pw-muted font-mono">
+              Showing all {jobs.length.toLocaleString()} matching jobs
+            </div>
+          )}
         </div>
       )}
     </div>
