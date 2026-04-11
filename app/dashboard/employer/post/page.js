@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
@@ -34,12 +34,13 @@ const LOCATIONS = ['London','Manchester','Edinburgh','Bristol','Brighton','Birmi
 
 export default function PostJobPage() {
   const router = useRouter()
-  const [editId, setEditId] = useState(null)
+  const searchParams = useSearchParams()
+  const editId = searchParams.get('edit')
   const { user, profile, loading: authLoading } = useAuth()
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(0)
   const [error, setError] = useState('')
-  const [loadingJob, setLoadingJob] = useState(false)
+  const [loadingJob, setLoadingJob] = useState(!!editId)
 
   const [form, setForm] = useState({
     title: '',
@@ -52,15 +53,6 @@ export default function PostJobPage() {
     requirements: '',
     tags: [],
   })
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const eid = params.get('edit')
-    if (eid) {
-      setEditId(eid)
-      setLoadingJob(true)
-    }
-  }, [])
 
   useEffect(() => {
     if (authLoading) return
@@ -98,9 +90,11 @@ export default function PostJobPage() {
     }))
   }
 
+  // Smart tag suggestions based on job title
   const suggestedCategories = useMemo(() => {
     const title = form.title.toLowerCase()
     if (!title) return ['General']
+    
     const matched = []
     for (const mapping of TITLE_CATEGORY_MAP) {
       if (mapping.keywords.some(kw => title.includes(kw))) {
@@ -108,9 +102,18 @@ export default function PostJobPage() {
       }
     }
     if (matched.length === 0) matched.push('General')
+    // Always include General as a fallback
     if (!matched.includes('General')) matched.push('General')
     return [...new Set(matched)]
   }, [form.title])
+
+  const suggestedTags = useMemo(() => {
+    const tags = []
+    for (const cat of suggestedCategories) {
+      if (TAG_CATEGORIES[cat]) tags.push(...TAG_CATEGORIES[cat])
+    }
+    return [...new Set(tags)]
+  }, [suggestedCategories])
 
   function slugify(text) {
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 100)
@@ -188,7 +191,7 @@ export default function PostJobPage() {
       </div>
       <div className="flex gap-3">
         <Link href="/dashboard/employer" className="flex-1 py-3 rounded-lg border border-pw-border text-pw-text1 font-bold text-sm text-center hover:bg-pw-card transition-colors">Dashboard</Link>
-        <Link href="/jobs" className="flex-1 py-3 rounded-lg bg-pw-green text-black font-bold text-sm text-center hover:translate-y-[-1px] transition-all">View jobs</Link>
+        <Link href="/jobs" className="flex-1 py-3 rounded-lg bg-pw-green text-white font-bold text-sm text-center hover:translate-y-[-1px] transition-all">View jobs</Link>
       </div>
     </div>
   )
@@ -208,7 +211,7 @@ export default function PostJobPage() {
         ))}
       </div>
 
-      {error && <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">{error}</div>}
+      {error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">{error}</div>}
 
       {step === 0 && (
         <div className="bg-pw-card border border-pw-border rounded-xl p-5">
@@ -245,7 +248,7 @@ export default function PostJobPage() {
               <input type="number" value={form.salary_max} onChange={e => update('salary_max', e.target.value)} placeholder="e.g. 95000" className="w-full px-3 py-2.5 rounded-md border border-pw-border bg-pw-bg text-sm text-pw-text1" />
             </div>
           </div>
-          <div className="text-[10px] text-pw-green mb-3">Salary is mandatory on ProofWork.</div>
+          <div className="text-[10px] text-pw-green mb-3">Salary is mandatory on ProofWork — it's what makes candidates trust your listing.</div>
           <div className="mb-3">
             <label className="text-xs font-semibold text-pw-text3 mb-1 block">Job type</label>
             <div className="flex gap-2">
@@ -254,7 +257,7 @@ export default function PostJobPage() {
               ))}
             </div>
           </div>
-          <button onClick={() => { if (!form.title.trim() || !form.location || !form.salary_min || !form.salary_max) { setError('Fill in all required fields'); return } setError(''); setStep(1) }} className="w-full py-3 rounded-lg bg-pw-green text-black font-bold text-sm mt-3 hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">Next →</button>
+          <button onClick={() => { if (!form.title.trim() || !form.location || !form.salary_min || !form.salary_max) { setError('Fill in all required fields'); return } setError(''); setStep(1) }} className="w-full py-3 rounded-lg bg-pw-green text-white font-bold text-sm mt-3 hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">Next →</button>
         </div>
       )}
 
@@ -272,7 +275,7 @@ export default function PostJobPage() {
           <div className="mb-4">
             <label className="text-xs font-semibold text-pw-text3 mb-2 block">
               Skills & tags
-              {form.title && <span className="text-pw-green font-normal ml-2">— suggestions for &quot;{form.title}&quot;</span>}
+              {form.title && <span className="text-pw-green font-normal ml-2">— suggestions for "{form.title}"</span>}
             </label>
             {suggestedCategories.map(cat => (
               <div key={cat} className="mb-3">
@@ -290,7 +293,7 @@ export default function PostJobPage() {
           </div>
           <div className="flex gap-3">
             <button onClick={() => setStep(0)} className="flex-1 py-3 rounded-lg border border-pw-border text-pw-text1 font-bold text-sm hover:bg-pw-card transition-colors">← Back</button>
-            <button onClick={() => { if (!form.description.trim()) { setError('Description is required'); return } setError(''); setStep(2) }} className="flex-1 py-3 rounded-lg bg-pw-green text-black font-bold text-sm hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">Review →</button>
+            <button onClick={() => { if (!form.description.trim()) { setError('Description is required'); return } setError(''); setStep(2) }} className="flex-1 py-3 rounded-lg bg-pw-green text-white font-bold text-sm hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">Review →</button>
           </div>
         </div>
       )}
@@ -315,7 +318,7 @@ export default function PostJobPage() {
           </div>
           <div className="flex gap-3">
             <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-lg border border-pw-border text-pw-text1 font-bold text-sm hover:bg-pw-card transition-colors">← Edit</button>
-            <button onClick={handleSubmit} disabled={submitting} className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${submitting ? 'bg-pw-border text-pw-muted' : 'bg-pw-green text-black hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20'}`}>{submitting ? 'Publishing...' : editId ? 'Update job' : 'Publish job 🎉'}</button>
+            <button onClick={handleSubmit} disabled={submitting} className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${submitting ? 'bg-pw-border text-pw-muted' : 'bg-pw-green text-white hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20'}`}>{submitting ? 'Publishing...' : editId ? 'Update job' : 'Publish job 🎉'}</button>
           </div>
         </div>
       )}

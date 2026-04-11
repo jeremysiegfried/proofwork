@@ -8,17 +8,19 @@ module.exports = {
     extend: {
       colors: {
         pw: {
-          bg: '#0c0c0a',
-          card: '#1a1a17',
-          border: '#2a2a25',
-          green: '#22c55e',
-          greenDark: '#052e16',
-          amber: '#f59e0b',
-          amberDark: '#422006',
-          muted: '#6b6456',
-          text1: '#fafaf5',
-          text2: '#a8a090',
-          text3: '#d4cfc5',
+          bg: '#FAF9F6',
+          card: '#FFFFFF',
+          border: '#E8E4DE',
+          green: '#16A34A',
+          greenDark: '#DCFCE7',
+          greenText: '#166534',
+          amber: '#D97706',
+          amberDark: '#FEF3C7',
+          amberText: '#92400E',
+          muted: '#6B6560',
+          text1: '#1A1A1A',
+          text2: '#6B6560',
+          text3: '#3D3832',
         }
       },
       fontFamily: {

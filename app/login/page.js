@@ -26,7 +26,7 @@ export default function LoginPage() {
       <p className="text-sm text-pw-text2 text-center mb-8">Log in to your ProofWork account</p>
       <form onSubmit={handleLogin}>
         <div className="bg-pw-card border border-pw-border rounded-xl p-5">
-          {error && <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">{error}</div>}
+          {error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">{error}</div>}
           <div className="mb-3">
             <label className="text-xs font-semibold text-pw-text3 mb-1 block">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" required className="w-full px-3 py-2.5 rounded-md border border-pw-border bg-pw-bg text-sm text-pw-text1" />
@@ -35,7 +35,7 @@ export default function LoginPage() {
             <label className="text-xs font-semibold text-pw-text3 mb-1 block">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required className="w-full px-3 py-2.5 rounded-md border border-pw-border bg-pw-bg text-sm text-pw-text1" />
           </div>
-          <button type="submit" disabled={loading} className={`w-full py-3 rounded-lg font-bold text-sm transition-all ${loading ? 'bg-pw-border text-pw-muted' : 'bg-pw-green text-black hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20'}`}>
+          <button type="submit" disabled={loading} className={`w-full py-3 rounded-lg font-bold text-sm transition-all ${loading ? 'bg-pw-border text-pw-muted' : 'bg-pw-green text-white hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20'}`}>
             {loading ? 'Logging in...' : 'Log in'}
           </button>
         </div>

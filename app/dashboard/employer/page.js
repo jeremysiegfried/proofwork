@@ -55,11 +55,11 @@ export default function EmployerDashboard() {
   )
 
   const STATUS_COLORS = {
-    submitted: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    reviewing: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    interview: 'bg-pw-greenDark text-pw-green border-pw-green/20',
-    rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
-    offer: 'bg-pw-greenDark text-pw-green border-pw-green/20',
+    submitted: 'bg-blue-50 text-blue-700 border-blue-200',
+    reviewing: 'bg-amber-50 text-amber-700 border-amber-200',
+    interview: 'bg-green-50 text-green-700 border-green-200',
+    rejected: 'bg-red-50 text-red-700 border-red-200',
+    offer: 'bg-green-50 text-green-700 border-green-200',
   }
 
   const filteredApps = selectedJob
@@ -81,7 +81,7 @@ export default function EmployerDashboard() {
           <Link href="/dashboard/employer/company" className="px-4 py-2 rounded-lg border border-pw-border text-pw-text2 text-xs font-semibold hover:text-pw-text1 hover:bg-pw-card transition-all">
             Company profile
           </Link>
-          <Link href="/dashboard/employer/post" className="px-4 py-2 rounded-lg bg-pw-green text-black text-xs font-bold hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
+          <Link href="/dashboard/employer/post" className="px-4 py-2 rounded-lg bg-pw-green text-white text-xs font-bold hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
             + Post a job
           </Link>
         </div>
@@ -167,14 +167,14 @@ export default function EmployerDashboard() {
                         <div className="flex gap-1 ml-3">
                           {app.status === 'submitted' && (
                             <>
-                              <button onClick={() => updateStatus(app.id, 'reviewing')} className="px-2 py-1 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors">Review</button>
+                              <button onClick={() => updateStatus(app.id, 'reviewing')} className="px-2 py-1 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors">Review</button>
                               <button onClick={() => updateStatus(app.id, 'interview')} className="px-2 py-1 rounded text-[10px] font-semibold bg-pw-greenDark text-pw-green border border-pw-green/20 hover:bg-pw-green/20 transition-colors">Interview</button>
                             </>
                           )}
                           {app.status === 'reviewing' && (
                             <>
                               <button onClick={() => updateStatus(app.id, 'interview')} className="px-2 py-1 rounded text-[10px] font-semibold bg-pw-greenDark text-pw-green border border-pw-green/20 hover:bg-pw-green/20 transition-colors">Interview</button>
-                              <button onClick={() => updateStatus(app.id, 'rejected')} className="px-2 py-1 rounded text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors">Reject</button>
+                              <button onClick={() => updateStatus(app.id, 'rejected')} className="px-2 py-1 rounded text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors">Reject</button>
                             </>
                           )}
                           {app.status === 'interview' && (

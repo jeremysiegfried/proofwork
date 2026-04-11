@@ -107,7 +107,7 @@ export default function SignupPage() {
               <button type="button" onClick={() => setRole('')} className="text-xs text-pw-muted hover:text-pw-text2">Change</button>
             </div>
 
-            {error && <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">{error}</div>}
+            {error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">{error}</div>}
 
             <div className="mb-3">
               <label className="text-xs font-semibold text-pw-text3 mb-1 block">Full name</label>
@@ -132,7 +132,7 @@ export default function SignupPage() {
               </div>
             )}
 
-            <button type="submit" disabled={loading} className={`w-full py-3 rounded-lg font-bold text-sm transition-all mt-2 ${loading ? 'bg-pw-border text-pw-muted' : 'bg-pw-green text-black hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20'}`}>
+            <button type="submit" disabled={loading} className={`w-full py-3 rounded-lg font-bold text-sm transition-all mt-2 ${loading ? 'bg-pw-border text-pw-muted' : 'bg-pw-green text-white hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20'}`}>
               {loading ? 'Creating account...' : 'Create account'}
             </button>
           </div>

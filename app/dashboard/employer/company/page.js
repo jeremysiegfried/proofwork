@@ -193,7 +193,7 @@ export default function CompanySettingsPage() {
         </div>
       </div>
 
-      <button onClick={handleSave} disabled={saving} className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all ${saving ? 'bg-pw-border text-pw-muted' : 'bg-pw-green text-black hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20'}`}>
+      <button onClick={handleSave} disabled={saving} className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all ${saving ? 'bg-pw-border text-pw-muted' : 'bg-pw-green text-white hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20'}`}>
         {saving ? 'Saving...' : 'Save & update trust scores'}
       </button>
     </div>

@@ -134,7 +134,7 @@ export default function ApplyPage({ params }) {
         <Link href="/jobs" className="flex-1 py-3 rounded-lg border border-pw-border text-pw-text1 font-bold text-sm text-center hover:bg-pw-card transition-colors">
           Browse more jobs
         </Link>
-        <Link href={`/jobs/${params.slug}`} className="flex-1 py-3 rounded-lg bg-pw-green text-black font-bold text-sm text-center hover:translate-y-[-1px] transition-all">
+        <Link href={`/jobs/${params.slug}`} className="flex-1 py-3 rounded-lg bg-pw-green text-white font-bold text-sm text-center hover:translate-y-[-1px] transition-all">
           View listing
         </Link>
       </div>
@@ -306,7 +306,7 @@ export default function ApplyPage({ params }) {
             className={`w-full py-4 rounded-xl font-extrabold text-sm transition-all ${
               submitting
                 ? 'bg-pw-border text-pw-muted cursor-wait'
-                : 'bg-pw-green text-black hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 cursor-pointer'
+                : 'bg-pw-green text-white hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 cursor-pointer'
             }`}
           >
             {submitting ? 'Submitting...' : job.has_challenge ? 'Continue to skill challenge →' : 'Submit application'}

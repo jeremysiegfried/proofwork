@@ -1,270 +1,411 @@
-// ProofWork Scraper v4 — All UK Jobs
-// node scripts/scrape.mjs
+// ProofWork Job Scraper v3 — Maximum Coverage
+// Usage: node scripts/scrape.mjs [--adzuna] [--careers] [--all]
 
 import { createClient } from '@supabase/supabase-js'
-const supabase = createClient(
-  'https://fovjkyqimtafpzdwtatp.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdmpreXFpbXRhZnB6ZHd0YXRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzQ5OTUsImV4cCI6MjA5MTQxMDk5NX0.qG50PxCyWTL9gyb8jlqjJsKQ6gJGULbOizqxezQTais'
-)
 
-const AZ_ID = '83de6425', AZ_KEY = 'e032d7f124131b52ee21f480e89a3c41'
+const SUPABASE_URL = 'https://fovjkyqimtafpzdwtatp.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvdmpreXFpbXRhZnB6ZHd0YXRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzQ5OTUsImV4cCI6MjA5MTQxMDk5NX0.qG50PxCyWTL9gyb8jlqjJsKQ6gJGULbOizqxezQTais'
+const ADZUNA_ID = '83de6425'
+const ADZUNA_KEY = 'e032d7f124131b52ee21f480e89a3c41'
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-const SEARCHES = [
-  'software engineer','frontend developer','backend developer','full stack developer',
-  'devops engineer','data scientist','data analyst','data engineer',
-  'machine learning','cloud engineer','security engineer',
-  'mobile developer','ios developer','android developer',
-  'qa engineer','solutions architect','technical lead','engineering manager',
-  'product manager','product designer','UX designer','UI designer',
-  'sales manager','account manager','business development','account executive',
-  'sales director','commercial manager','partnerships manager',
-  'marketing manager','digital marketing','content manager','SEO specialist',
-  'social media manager','brand manager','growth manager',
-  'communications manager','copywriter','PR manager',
-  'financial analyst','accountant','finance manager',
-  'finance director','management accountant',
-  'operations manager','project manager','programme manager',
-  'supply chain manager','logistics manager','procurement manager',
-  'HR manager','recruiter','talent acquisition','people manager',
-  'learning development','HR business partner',
-  'customer success manager','customer service manager',
-  'office manager','executive assistant','analyst','consultant',
-  'strategy manager','chief of staff',
-  'nurse','teacher','lawyer','solicitor','paralegal',
-  'graphic designer','video editor','photographer',
-  'warehouse manager','retail manager','store manager',
+const ENRICHMENT = {
+  'monzo':{e:'💳',emp:'3,200',yr:'2015',f:'IPO-track',g:4.5,s:['Go','Kubernetes','Cassandra']},
+  'octopus energy':{e:'🐙',emp:'2,800',yr:'2015',f:'Series F',g:4.3,s:['Python','Django','React']},
+  'wise':{e:'💸',emp:'4,500',yr:'2011',f:'Public',g:4.2,s:['Java','React','Kubernetes']},
+  'revolut':{e:'💜',emp:'8,000',yr:'2015',f:'Series E',g:3.4,s:['Kotlin','Swift','React']},
+  'starling bank':{e:'🏦',emp:'1,800',yr:'2014',f:'Series D',g:4.1,s:['Java','AWS','Kotlin']},
+  'deliveroo':{e:'🚲',emp:'2,500',yr:'2013',f:'Public',g:3.6,s:['Python','Go','React']},
+  'checkout.com':{e:'💳',emp:'1,800',yr:'2012',f:'Series D',g:3.9,s:['Go','Kotlin','AWS']},
+  'skyscanner':{e:'✈️',emp:'1,200',yr:'2003',f:'Acquired',g:4.0,s:['Python','React','AWS']},
+  'graphcore':{e:'🧠',emp:'600',yr:'2016',f:'Series E',g:3.8,s:['Python','C++','CUDA']},
+  'form3':{e:'🏗️',emp:'400',yr:'2016',f:'Series C',g:4.2,s:['Go','Kubernetes','AWS']},
+  'snyk':{e:'🛡️',emp:'1,000',yr:'2015',f:'Series G',g:3.9,s:['TypeScript','Go','Kubernetes']},
+  'darktrace':{e:'🔒',emp:'2,200',yr:'2013',f:'Public',g:3.6,s:['Python','C++','Java']},
+  'paddle':{e:'🏓',emp:'400',yr:'2012',f:'Series D',g:4.3,s:['Go','React','AWS']},
+  'thought machine':{e:'🏦',emp:'500',yr:'2014',f:'Series C',g:4.0,s:['Go','Java','Kubernetes']},
+  'zopa':{e:'💰',emp:'600',yr:'2005',f:'Bank license',g:3.8,s:['Java','React','AWS']},
+  'iwoca':{e:'💼',emp:'400',yr:'2012',f:'Series E',g:4.1,s:['Python','React','AWS']},
+  'lendable':{e:'💸',emp:'200',yr:'2014',f:'Series C',g:4.3,s:['Python','React','AWS']},
+  'otta':{e:'🔍',emp:'150',yr:'2019',f:'Series B',g:4.5,s:['TypeScript','React','PostgreSQL']},
+  'multiverse':{e:'🎓',emp:'600',yr:'2016',f:'Series D',g:3.8,s:['Python','React','AWS']},
+  'cleo':{e:'🤖',emp:'300',yr:'2016',f:'Series C',g:4.1,s:['Python','React','Kotlin']},
+  'gopuff':{e:'📦',emp:'1,000',yr:'2013',f:'Series H',g:3.2,s:['Python','React','AWS']},
+  'tractable':{e:'🚗',emp:'300',yr:'2014',f:'Series E',g:4.2,s:['Python','PyTorch','AWS']},
+  'improbable':{e:'🎮',emp:'700',yr:'2012',f:'Series B',g:3.5,s:['Go','C++','Unity']},
+  'blockchain.com':{e:'⛓️',emp:'500',yr:'2011',f:'Series D',g:3.5,s:['Go','React','Kotlin']},
+  'motorway':{e:'🚗',emp:'400',yr:'2017',f:'Series C',g:4.2,s:['TypeScript','React','AWS']},
+  'edited':{e:'👗',emp:'200',yr:'2012',f:'Series B',g:4.0,s:['Python','React','AWS']},
+  'eigen technologies':{e:'📄',emp:'200',yr:'2014',f:'Series C',g:3.9,s:['Python','NLP','AWS']},
+  'speechmatics':{e:'🎙️',emp:'150',yr:'2006',f:'Series B',g:4.4,s:['Python','C++','ML']},
+  'faculty':{e:'🧪',emp:'250',yr:'2014',f:'Series B',g:4.1,s:['Python','ML','AWS']},
+  'what3words':{e:'🗺️',emp:'200',yr:'2013',f:'Series C',g:3.8,s:['Java','Kotlin','AWS']},
+  'zappi':{e:'📊',emp:'250',yr:'2012',f:'Series B',g:4.0,s:['Python','React','AWS']},
+  'atom bank':{e:'🏦',emp:'450',yr:'2014',f:'Licensed bank',g:3.7,s:['Java','AWS','React']},
+  'oak north':{e:'🏦',emp:'600',yr:'2015',f:'Licensed bank',g:3.6,s:['Java','Python','AWS']},
+  'nutmeg':{e:'🥜',emp:'300',yr:'2011',f:'Acquired by JPM',g:3.9,s:['Java','React','AWS']},
+  'funding circle':{e:'💷',emp:'700',yr:'2010',f:'Public',g:3.6,s:['Java','Go','React']},
+  'currency cloud':{e:'💱',emp:'350',yr:'2012',f:'Acquired by Visa',g:4.0,s:['Ruby','React','AWS']},
+  'habito':{e:'🏠',emp:'100',yr:'2015',f:'Series C',g:4.0,s:['Elixir','React','AWS']},
+  'sky':{e:'📺',emp:'30,000',yr:'1990',f:'Acquired by Comcast',g:3.8,s:['Java','React','AWS']},
+  'bt group':{e:'📱',emp:'100,000',yr:'1846',f:'Public',g:3.5,s:['Java','Python','AWS']},
+  'bbc':{e:'📻',emp:'22,000',yr:'1922',f:'Public',g:4.0,s:['Python','React','AWS']},
+}
+
+// ===== GREENHOUSE COMPANIES (verified UK boards) =====
+const GREENHOUSE = [
+  {s:'monzo',n:'Monzo'},
+  {s:'snyk',n:'Snyk'},
+  {s:'tractable',n:'Tractable'},
+  {s:'motorway',n:'Motorway'},
+  {s:'caborerleo',n:'Cleo'},
+  {s:'thoughtmachine',n:'Thought Machine'},
+  {s:'gopaborernuff',n:'GoPuff'},
+  {s:'edited',n:'EDITED'},
+  {s:'speechmatics',n:'Speechmatics'},
+  {s:'faculty',n:'Faculty'},
+  {s:'what3words',n:'what3words'},
+  {s:'zappi',n:'Zappi'},
+  {s:'iwoca',n:'iwoca'},
+  {s:'lendable',n:'Lendable'},
+  {s:'multiverse',n:'Multiverse'},
+  {s:'paddlehq',n:'Paddle'},
+  {s:'eigentechnologies',n:'Eigen Technologies'},
+  {s:'fundingcircle',n:'Funding Circle'},
+  {s:'improbable',n:'Improbable'},
+  {s:'blockchain',n:'Blockchain.com'},
+  {s:'aborerntta',n:'Otta'},
+  {s:'zopa',n:'Zopa'},
+  {s:'starlingbank',n:'Starling Bank'},
+  {s:'deliveroo',n:'Deliveroo'},
+  {s:'checkout',n:'Checkout.com'},
+  {s:'checkoutcom',n:'Checkout.com'},
+  {s:'revolut',n:'Revolut'},
+  {s:'darktrace',n:'Darktrace'},
+  {s:'skyuk',n:'Sky'},
+  {s:'skyscanner',n:'Skyscanner'},
+  {s:'graphcore',n:'Graphcore'},
+  {s:'form3',n:'Form3'},
+  {s:'atombaborernank',n:'Atom Bank'},
+  {s:'oaknorth',n:'Oak North'},
+  {s:'habito',n:'Habito'},
+  {s:'nutmeg',n:'Nutmeg'},
+  {s:'currencycloud',n:'Currency Cloud'},
+  {s:'octopusenergy',n:'Octopus Energy'},
+  {s:'octopus',n:'Octopus Energy'},
 ]
 
-const SKILLS = ['python','javascript','typescript','react','node.js','go','java','kotlin','swift','rust','c++','c#','.net','ruby','php','sql','mongodb','postgresql','redis','graphql','aws','azure','gcp','docker','kubernetes','terraform','ci/cd','git','vue','angular','django','flask','spring','pytorch','tensorflow','spark','kafka','figma','agile','scrum','jira','salesforce','hubspot','seo','excel','power bi','tableau','looker','snowflake','sap','workday','photoshop','google ads','mailchimp']
+// ===== LEVER COMPANIES =====
+const LEVER = [
+  {s:'deliveroo',n:'Deliveroo'},
+  {s:'checkout',n:'Checkout.com'},
+  {s:'starlingbank',n:'Starling Bank'},
+  {s:'form3',n:'Form3'},
+  {s:'darktrace',n:'Darktrace'},
+  {s:'revolut',n:'Revolut'},
+  {s:'skyscanner',n:'Skyscanner'},
+  {s:'wise',n:'Wise'},
+  {s:'transferwise',n:'Wise'},
+  {s:'snyk',n:'Snyk'},
+  {s:'paddle',n:'Paddle'},
+  {s:'motorway',n:'Motorway'},
+  {s:'iwoca',n:'iwoca'},
+  {s:'zopa',n:'Zopa'},
+  {s:'multiverse',n:'Multiverse'},
+  {s:'cleo-ai',n:'Cleo'},
+  {s:'tractable',n:'Tractable'},
+  {s:'improbable',n:'Improbable'},
+  {s:'gopuff',n:'GoPuff'},
+  {s:'thoughtmachine',n:'Thought Machine'},
+  {s:'sky',n:'Sky'},
+  {s:'bbc',n:'BBC'},
+]
+
+// ===== WORKABLE COMPANIES =====
+const WORKABLE = [
+  {s:'octopus-energy',n:'Octopus Energy'},
+  {s:'graphcore',n:'Graphcore'},
+  {s:'edited',n:'EDITED'},
+  {s:'faculty-1',n:'Faculty'},
+  {s:'speechmatics',n:'Speechmatics'},
+  {s:'what3words',n:'what3words'},
+  {s:'habito',n:'Habito'},
+  {s:'nutmeg',n:'Nutmeg'},
+  {s:'atom-bank',n:'Atom Bank'},
+  {s:'cleo-ai',n:'Cleo'},
+]
+
+// ===== SKILLS =====
+const SKILLS = ['python','javascript','typescript','react','node.js','nodejs','go','golang','java','kotlin','swift','rust','c++','c#','.net','ruby','php','scala','sql','mongodb','postgresql','redis','graphql','rest','aws','azure','gcp','docker','kubernetes','terraform','ci/cd','git','vue','angular','django','flask','fastapi','spring','pytorch','tensorflow','spark','airflow','kafka','figma','agile','scrum','jira','salesforce','hubspot','seo','excel','power bi','tableau','looker','dbt','snowflake']
 
 function extractTags(text) {
   if (!text) return []
-  const l = text.toLowerCase()
-  return [...new Set(SKILLS.filter(s => new RegExp('\\b'+s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(l)).map(s => {
-    if (s==='node.js') return 'Node.js'; if (s==='postgresql') return 'PostgreSQL'; if (s==='ci/cd') return 'CI/CD';
+  const lower = text.toLowerCase()
+  const found = SKILLS.filter(s => new RegExp(`\\b${s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`,'i').test(lower))
+  return [...new Set(found.map(s => {
+    if (s==='golang') return 'Go'; if (s==='nodejs'||s==='node.js') return 'Node.js';
+    if (s==='postgresql') return 'PostgreSQL'; if (s==='ci/cd') return 'CI/CD';
     return s.charAt(0).toUpperCase()+s.slice(1)
   }))].slice(0,8)
 }
 
-function extractLoc(l) {
-  if (!l) return 'UK'
-  var x = l.toLowerCase()
-  var cities = [['london','London'],['manchester','Manchester'],['edinburgh','Edinburgh'],['bristol','Bristol'],['brighton','Brighton'],['birmingham','Birmingham'],['cambridge','Cambridge'],['oxford','Oxford'],['glasgow','Glasgow'],['leeds','Leeds'],['cardiff','Cardiff'],['newcastle','Newcastle'],['liverpool','Liverpool'],['nottingham','Nottingham'],['sheffield','Sheffield'],['belfast','Belfast'],['bath','Bath'],['reading','Reading'],['southampton','Southampton'],['coventry','Coventry']]
-  for (var i = 0; i < cities.length; i++) { if (x.includes(cities[i][0])) return cities[i][1] }
-  return l.split(',')[0].trim().substring(0,30) || 'UK'
+function extractLocation(loc) {
+  if (!loc) return 'UK'
+  const l = loc.toLowerCase()
+  const cities = [['london','London'],['manchester','Manchester'],['edinburgh','Edinburgh'],['bristol','Bristol'],['brighton','Brighton'],['birmingham','Birmingham'],['cambridge','Cambridge'],['oxford','Oxford'],['glasgow','Glasgow'],['leeds','Leeds'],['cardiff','Cardiff'],['newcastle','Newcastle'],['liverpool','Liverpool'],['nottingham','Nottingham'],['sheffield','Sheffield'],['belfast','Belfast'],['bath','Bath']]
+  for (const [k,v] of cities) if (l.includes(k)) return v
+  return loc.split(',')[0].trim().substring(0,30) || 'UK'
 }
 
-function extractRemote(t) {
-  if (!t) return 'On-site'
-  var l = t.toLowerCase()
-  if (l.includes('fully remote') || l.includes('100% remote')) return 'Remote'
-  if (l.includes('remote') && l.includes('hybrid')) return 'Hybrid'
+function extractRemote(text) {
+  if (!text) return 'On-site'
+  const l = text.toLowerCase()
+  if (l.includes('fully remote')||l.includes('100% remote')) return 'Remote'
+  if (l.includes('remote')&&l.includes('hybrid')) return 'Hybrid'
   if (l.includes('remote')) return 'Remote OK'
   if (l.includes('hybrid')) return 'Hybrid'
   return 'On-site'
 }
 
-function slugify(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 100) }
-function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms) }) }
+function slugify(t){return t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').substring(0,100)}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 
-async function saveJob(j) {
-  var cs = slugify(j.company)
-  var coId
+// ===== SAVE TO DB =====
+async function saveJob(job) {
+  const coSlug = slugify(job.company)
+  const en = ENRICHMENT[job.company.toLowerCase()] || {}
 
-  var existing = await supabase.from('companies').select('id').eq('slug', cs).single()
-  if (existing.data) {
-    coId = existing.data.id
+  // Upsert company
+  const coRow = {name:job.company,slug:coSlug,logo_emoji:en.e||'',employee_count:en.emp||'',founded:en.yr||'',funding:en.f||'',glassdoor_rating:en.g||0,tech_stack:en.s||[],claimed:false}
+  let coId
+
+  const {data:existing} = await supabase.from('companies').select('id,claimed').eq('slug',coSlug).single()
+  if (existing) {
+    coId = existing.id
+    if (!existing.claimed) {
+      await supabase.from('companies').update({employee_count:coRow.employee_count||undefined,founded:coRow.founded||undefined,funding:coRow.funding||undefined,glassdoor_rating:coRow.glassdoor_rating||undefined}).eq('id',coId)
+    }
   } else {
-    var ins = await supabase.from('companies').insert({ name: j.company, slug: cs, claimed: false }).select().single()
-    if (ins.error) return false
-    coId = ins.data.id
+    const {data:newCo,error} = await supabase.from('companies').insert(coRow).select().single()
+    if (error) return false
+    coId = newCo.id
   }
 
-  var js = slugify(j.title + '-' + cs)
-  var coData = await supabase.from('companies').select('benefits,progression,satisfaction').eq('id', coId).single()
-  var trust = 0
-  if (j.salary_min > 0) trust += 30
-  if (coData.data && coData.data.benefits && coData.data.benefits.length > 0) trust += 20
-  if (coData.data && coData.data.progression) trust += 20
-  if (coData.data && coData.data.satisfaction > 0) trust += 15
+  // Insert job
+  const jobSlug = slugify(job.title+'-'+coSlug)
+  const {data:co} = await supabase.from('companies').select('benefits,progression,satisfaction').eq('id',coId).single()
+  let trust = 0
+  if (job.salary_min>0) trust+=30
+  if (co?.benefits?.length>0) trust+=20
+  if (co?.progression) trust+=20
+  if (co?.satisfaction>0) trust+=15
 
-  var row = {
-    company_id: coId, title: j.title, slug: js,
-    description: (j.description || '').substring(0, 5000),
-    location: j.location || 'UK',
-    remote_policy: j.remote || 'On-site',
-    job_type: 'Full-time',
-    salary_min: j.salary_min || 0, salary_max: j.salary_max || 0,
-    tags: j.tags || [], requirements: [],
-    trust_score: trust, has_challenge: false,
-    source: j.source || 'adzuna',
-    source_url: j.url || '',
-    active: true
-  }
+  const row = {company_id:coId,title:job.title,slug:jobSlug,description:(job.description||'').substring(0,5000),location:job.location,remote_policy:job.remote||'On-site',job_type:'Full-time',salary_min:job.salary_min||0,salary_max:job.salary_max||0,tags:job.tags||[],requirements:[],trust_score:trust,has_challenge:false,source:job.source||'scraped',source_url:job.source_url||'',active:true}
 
-  var result = await supabase.from('jobs').upsert(row, { onConflict: 'company_id,slug' })
-  if (result.error && !result.error.message.includes('duplicate')) {
-    row.slug = js + '-' + Date.now().toString(36).slice(-4)
-    await supabase.from('jobs').insert(row)
+  const {error} = await supabase.from('jobs').upsert(row,{onConflict:'company_id,slug'})
+  if (error && !error.message.includes('duplicate')) {
+    row.slug = jobSlug+'-'+Date.now().toString(36).slice(-4)
+    const {error:e2} = await supabase.from('jobs').insert(row)
+    if (e2) return false
   }
-  return true
+  return !error || error.message.includes('duplicate') ? true : true
 }
 
-async function main() {
-  console.log('=== ProofWork Scraper v4 ===')
-  console.log('Searching ' + SEARCHES.length + ' job categories, 5 pages each')
-  console.log('Target: 1,000+ UK jobs\n')
+// ===== ADZUNA =====
+async function scrapeAdzuna() {
+  console.log('\n📡 Adzuna API...\n')
+  let total = 0
+  const searches = ['software engineer','data scientist','product manager','devops','frontend developer','backend developer','machine learning','ux designer','data analyst','project manager','scrum master','business analyst','cloud engineer','security engineer','qa engineer','mobile developer','full stack developer','solutions architect','engineering manager','technical lead']
 
-  var total = 0
-  var failed = 0
-
-  // ADZUNA
-  for (var i = 0; i < SEARCHES.length; i++) {
-    var query = SEARCHES[i]
-    var queryTotal = 0
-
-    for (var page = 1; page <= 5; page++) {
+  for (const query of searches) {
+    for (let page=1; page<=2; page++) {
       try {
-        var url = 'https://api.adzuna.com/v1/api/jobs/gb/search/' + page + '?app_id=' + AZ_ID + '&app_key=' + AZ_KEY + '&results_per_page=50&what=' + encodeURIComponent(query) + '&sort_by=date'
-        var res = await fetch(url)
-        if (!res.ok) { if (page === 1) failed++; break }
-        var data = await res.json()
-        var results = data.results || []
-        if (results.length === 0) break
+        const url = `https://api.adzuna.com/v1/api/jobs/gb/search/${page}?app_id=${ADZUNA_ID}&app_key=${ADZUNA_KEY}&results_per_page=50&what=${encodeURIComponent(query)}&sort_by=date`
+        const res = await fetch(url)
+        if (!res.ok) { if (page===1) console.log(`  ⊘ "${query}": ${res.status}`); break }
+        const data = await res.json()
+        const results = data.results || []
+        if (results.length===0) break
 
-        for (var k = 0; k < results.length; k++) {
-          var j = results[k]
-          var co = j.company ? j.company.display_name : null
-          if (!co || co.length < 2 || co === 'Confidential') continue
-
-          var title = (j.title || '').replace(/<[^>]*>/g, '').trim()
-          if (!title) continue
-
-          var ok = await saveJob({
-            title: title,
+        let added = 0
+        for (const j of results) {
+          const co = j.company?.display_name
+          if (!co || co==='Confidential' || co.length<2) continue
+          const ok = await saveJob({
+            title: j.title?.replace(/<[^>]*>/g,'').trim(),
             company: co,
-            location: extractLoc(j.location ? j.location.display_name : ''),
-            description: (j.description || '').replace(/<[^>]*>/g, ' ').trim(),
-            salary_min: Math.round(j.salary_min || 0),
-            salary_max: Math.round(j.salary_max || 0),
+            location: extractLocation(j.location?.display_name||''),
+            description: (j.description||'').replace(/<[^>]*>/g,' ').trim(),
+            salary_min: Math.round(j.salary_min||0),
+            salary_max: Math.round(j.salary_max||0),
             source: 'adzuna',
-            url: j.redirect_url || '',
-            tags: extractTags(title + ' ' + (j.description || '')),
-            remote: extractRemote(title + ' ' + (j.description || '') + ' ' + (j.location ? j.location.display_name : ''))
+            source_url: j.redirect_url||'',
+            tags: extractTags(j.title+' '+(j.description||'')),
+            remote: extractRemote(j.title+' '+(j.description||'')+' '+(j.location?.display_name||'')),
           })
-          if (ok) queryTotal++
+          if (ok) added++
         }
-        await sleep(350)
-      } catch (e) { break }
-    }
-
-    if (queryTotal > 0) {
-      console.log('  + ' + query + ': ' + queryTotal + ' jobs')
-      total += queryTotal
-    } else if (failed > 0) {
-      // silently skip failed queries
-    }
-
-    // Progress update every 10 queries
-    if ((i + 1) % 10 === 0) {
-      console.log('  ... ' + (i + 1) + '/' + SEARCHES.length + ' categories done, ' + total + ' jobs so far')
+        if (added>0) console.log(`  ✓ "${query}" p${page}: ${added} jobs`)
+        await sleep(400)
+      } catch(e) { console.log(`  ❌ "${query}": ${e.message}`) }
     }
   }
-
-  console.log('\n  Adzuna: ' + total + ' jobs from ' + SEARCHES.length + ' searches')
-
-  // GREENHOUSE
-  console.log('\n  Checking Greenhouse boards...')
-  var ghTotal = 0
-  var ghSlugs = ['monzo','snyk','tractable','motorway','thoughtmachine','iwoca','lendable','multiverse','paddlehq','edited','speechmatics','faculty','what3words','fundingcircle','improbable','blockchain','eigentechnologies','zappi','zopa','starlingbank','deliveroo','checkout','checkoutcom','revolut','darktrace','skyscanner','graphcore','form3','octopusenergy','octopus','oaknorth','habito','nutmeg','currencycloud','cleo','gopuff','beamery','onfido','cazoo','farfetch','depop','sky','bbc']
-  var ghSeen = {}
-
-  for (var g = 0; g < ghSlugs.length; g++) {
-    var s = ghSlugs[g]
-    if (ghSeen[s]) continue
-    ghSeen[s] = true
-    try {
-      var res2 = await fetch('https://boards-api.greenhouse.io/v1/boards/' + s + '/jobs?content=true')
-      if (!res2.ok) continue
-      var gData = await res2.json()
-      var gJobs = (gData.jobs || []).filter(function(j) {
-        var l = (j.location ? j.location.name : '').toLowerCase()
-        return l.includes('uk') || l.includes('united kingdom') || l.includes('london') || l.includes('manchester') || l.includes('edinburgh') || l.includes('bristol') || l.includes('cambridge') || l.includes('oxford') || l.includes('remote') || l.includes('glasgow') || l.includes('birmingham') || l.includes('leeds') || l.includes('brighton') || l.includes('liverpool') || l.includes('belfast')
-      })
-      var gAdded = 0
-      for (var gj = 0; gj < gJobs.length; gj++) {
-        var ghJob = gJobs[gj]
-        var ghDesc = (ghJob.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-        var ghOk = await saveJob({
-          title: ghJob.title,
-          company: s.replace(/-/g, ' '),
-          location: extractLoc(ghJob.location ? ghJob.location.name : ''),
-          description: ghDesc.substring(0, 5000),
-          salary_min: 0, salary_max: 0,
-          source: 'career page',
-          url: ghJob.absolute_url || ('https://boards.greenhouse.io/' + s + '/jobs/' + ghJob.id),
-          tags: extractTags(ghJob.title + ' ' + ghDesc),
-          remote: extractRemote(ghJob.title + ' ' + (ghJob.location ? ghJob.location.name : ''))
-        })
-        if (ghOk) gAdded++
-      }
-      if (gAdded > 0) { console.log('  + ' + s + ': ' + gAdded + ' jobs'); ghTotal += gAdded }
-      await sleep(250)
-    } catch (e) {}
-  }
-  total += ghTotal
-
-  // LEVER
-  console.log('\n  Checking Lever boards...')
-  var lvTotal = 0
-  var lvSlugs = ['deliveroo','checkout','starlingbank','form3','darktrace','revolut','skyscanner','wise','transferwise','snyk','paddle','motorway','iwoca','zopa','multiverse','cleo-ai','tractable','improbable','gopuff','thoughtmachine','beamery','onfido','monzo','cazoo','depop','sky','bbc','farfetch']
-  var lvSeen = {}
-
-  for (var lv = 0; lv < lvSlugs.length; lv++) {
-    var ls = lvSlugs[lv]
-    if (lvSeen[ls]) continue
-    lvSeen[ls] = true
-    try {
-      var lRes = await fetch('https://api.lever.co/v0/postings/' + ls + '?mode=json')
-      if (!lRes.ok) continue
-      var lJobs = await lRes.json()
-      if (!Array.isArray(lJobs)) continue
-      var lUk = lJobs.filter(function(j) {
-        var l = (j.categories ? j.categories.location : '').toLowerCase()
-        return l.includes('uk') || l.includes('united kingdom') || l.includes('london') || l.includes('manchester') || l.includes('edinburgh') || l.includes('bristol') || l.includes('remote') || l.includes('glasgow') || l.includes('birmingham') || l.includes('leeds')
-      })
-      var lAdded = 0
-      for (var lj = 0; lj < lUk.length; lj++) {
-        var lvJob = lUk[lj]
-        var lvOk = await saveJob({
-          title: lvJob.text,
-          company: ls.replace(/-/g, ' '),
-          location: extractLoc(lvJob.categories ? lvJob.categories.location : ''),
-          description: (lvJob.descriptionPlain || '').substring(0, 5000),
-          salary_min: 0, salary_max: 0,
-          source: 'career page',
-          url: lvJob.hostedUrl || '',
-          tags: extractTags(lvJob.text + ' ' + (lvJob.descriptionPlain || '')),
-          remote: extractRemote(lvJob.text + ' ' + (lvJob.categories ? lvJob.categories.location : ''))
-        })
-        if (lvOk) lAdded++
-      }
-      if (lAdded > 0) { console.log('  + ' + ls + ': ' + lAdded + ' jobs'); lvTotal += lAdded }
-      await sleep(250)
-    } catch (e) {}
-  }
-  total += lvTotal
-
-  // FINAL STATS
-  var jc = await supabase.from('jobs').select('*', { count: 'exact', head: true }).eq('active', true)
-  var cc = await supabase.from('companies').select('*', { count: 'exact', head: true })
-
-  console.log('\n======================================')
-  console.log('DONE!')
-  console.log('  New this run: ' + total)
-  console.log('  Total jobs: ' + (jc.count || 0))
-  console.log('  Total companies: ' + (cc.count || 0))
-  console.log('\nhttps://proofwork-nine.vercel.app/jobs')
+  console.log(`\n  Adzuna total: ${total} new jobs`)
+  return total
 }
 
-main().catch(function(e) { console.error(e) })
+// ===== GREENHOUSE =====
+async function scrapeGreenhouse() {
+  console.log('\n🏢 Greenhouse boards...\n')
+  let total = 0
+  const seen = new Set()
+
+  for (const co of GREENHOUSE) {
+    if (seen.has(co.s)) continue
+    seen.add(co.s)
+    try {
+      const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${co.s}/jobs?content=true`)
+      if (!res.ok) continue
+      const data = await res.json()
+      const jobs = data.jobs || []
+
+      const ukJobs = jobs.filter(j => {
+        const loc = (j.location?.name||'').toLowerCase()
+        return loc.includes('uk')||loc.includes('united kingdom')||loc.includes('london')||loc.includes('manchester')||loc.includes('edinburgh')||loc.includes('bristol')||loc.includes('cambridge')||loc.includes('oxford')||loc.includes('remote')||loc.includes('glasgow')||loc.includes('birmingham')||loc.includes('leeds')||loc.includes('brighton')||loc.includes('liverpool')
+      })
+
+      let added = 0
+      for (const j of ukJobs) {
+        const desc = (j.content||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()
+        const ok = await saveJob({
+          title: j.title, company: co.n,
+          location: extractLocation(j.location?.name||''),
+          description: desc.substring(0,5000),
+          salary_min:0, salary_max:0,
+          source:'career page',
+          source_url: j.absolute_url||`https://boards.greenhouse.io/${co.s}/jobs/${j.id}`,
+          tags: extractTags(j.title+' '+desc),
+          remote: extractRemote(j.title+' '+(j.location?.name||'')+' '+desc),
+        })
+        if (ok) added++
+      }
+      if (added>0) { console.log(`  ✓ ${co.n}: ${added} UK jobs`); total+=added }
+      await sleep(300)
+    } catch(e) {}
+  }
+  console.log(`\n  Greenhouse total: ${total} new jobs`)
+  return total
+}
+
+// ===== LEVER =====
+async function scrapeLever() {
+  console.log('\n🏢 Lever boards...\n')
+  let total = 0
+  const seen = new Set()
+
+  for (const co of LEVER) {
+    if (seen.has(co.s)) continue
+    seen.add(co.s)
+    try {
+      const res = await fetch(`https://api.lever.co/v0/postings/${co.s}?mode=json`)
+      if (!res.ok) continue
+      const jobs = await res.json()
+      if (!Array.isArray(jobs)) continue
+
+      const ukJobs = jobs.filter(j => {
+        const loc = (j.categories?.location||'').toLowerCase()
+        return loc.includes('uk')||loc.includes('united kingdom')||loc.includes('london')||loc.includes('manchester')||loc.includes('edinburgh')||loc.includes('bristol')||loc.includes('remote')||loc.includes('glasgow')||loc.includes('birmingham')||loc.includes('leeds')
+      })
+
+      let added = 0
+      for (const j of ukJobs) {
+        const desc = (j.descriptionPlain||'').substring(0,5000)
+        const ok = await saveJob({
+          title: j.text, company: co.n,
+          location: extractLocation(j.categories?.location||''),
+          description: desc,
+          salary_min:0, salary_max:0,
+          source:'career page',
+          source_url: j.hostedUrl||j.applyUrl||'',
+          tags: extractTags(j.text+' '+desc),
+          remote: extractRemote(j.text+' '+(j.categories?.location||'')+' '+desc),
+        })
+        if (ok) added++
+      }
+      if (added>0) { console.log(`  ✓ ${co.n}: ${added} UK jobs`); total+=added }
+      await sleep(300)
+    } catch(e) {}
+  }
+  console.log(`\n  Lever total: ${total} new jobs`)
+  return total
+}
+
+// ===== WORKABLE =====
+async function scrapeWorkable() {
+  console.log('\n🏢 Workable boards...\n')
+  let total = 0
+
+  for (const co of WORKABLE) {
+    try {
+      const res = await fetch(`https://apply.workable.com/api/v1/widget/accounts/${co.s}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({query:'',location:[],department:[],worktype:[],remote:[]})
+      })
+      if (!res.ok) continue
+      const data = await res.json()
+      const jobs = data.results || []
+
+      let added = 0
+      for (const j of jobs) {
+        const loc = (j.location?.city||'')+' '+(j.location?.country||'')
+        if (!loc.toLowerCase().includes('uk')&&!loc.toLowerCase().includes('united kingdom')&&!loc.toLowerCase().includes('london')&&!loc.toLowerCase().includes('manchester')&&!loc.toLowerCase().includes('remote')) continue
+
+        const ok = await saveJob({
+          title: j.title, company: co.n,
+          location: extractLocation(loc),
+          description: (j.description||j.title).substring(0,5000),
+          salary_min:0, salary_max:0,
+          source:'career page',
+          source_url: `https://apply.workable.com/${co.s}/j/${j.shortcode}/`,
+          tags: extractTags(j.title+' '+(j.description||'')),
+          remote: j.remote ? 'Remote' : extractRemote(j.title+' '+loc),
+        })
+        if (ok) added++
+      }
+      if (added>0) { console.log(`  ✓ ${co.n}: ${added} UK jobs`); total+=added }
+      await sleep(300)
+    } catch(e) {}
+  }
+  console.log(`\n  Workable total: ${total} new jobs`)
+  return total
+}
+
+// ===== MAIN =====
+async function main() {
+  const args = process.argv.slice(2)
+  const all = args.includes('--all') || args.length===0
+  const doAdzuna = args.includes('--adzuna') || all
+  const doCareers = args.includes('--careers') || all
+
+  console.log('🚀 ProofWork Job Scraper v3')
+  console.log('================================\n')
+
+  let total = 0
+  if (doAdzuna) total += await scrapeAdzuna()
+  if (doCareers) {
+    total += await scrapeGreenhouse()
+    total += await scrapeLever()
+    total += await scrapeWorkable()
+  }
+
+  const {count:jc} = await supabase.from('jobs').select('*',{count:'exact',head:true}).eq('active',true)
+  const {count:cc} = await supabase.from('companies').select('*',{count:'exact',head:true})
+
+  console.log('\n================================')
+  console.log(`✅ Done! ${total} new jobs`)
+  console.log(`   Total: ${jc} jobs across ${cc} companies`)
+  console.log(`🌐 https://proofwork-nine.vercel.app/jobs`)
+}
+
+main().catch(console.error)

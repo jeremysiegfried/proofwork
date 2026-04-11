@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { extractJobDetails } from '@/lib/extract'
 import TrustRing from '@/components/TrustRing'
 import JobDescription from '@/components/JobDescription'
 import Link from 'next/link'
@@ -54,10 +55,16 @@ export default async function JobDetailPage({ params }) {
 
   const company = job.companies
   const claimed = company?.claimed || false
-  const hasSalary = job.salary_min > 0
   const hasBenefits = company?.benefits?.length > 0
   const hasProg = company?.progression?.length > 0
   const hasSat = company?.satisfaction > 0
+
+  // Extract structured details from description
+  const details = extractJobDetails(job.description, job)
+  const salaryMin = details.salaryMin || job.salary_min || 0
+  const salaryMax = details.salaryMax || job.salary_max || 0
+  const hasSalary = salaryMin > 0
+  const isEstimate = hasSalary && salaryMin === salaryMax && !details.salaryMin
 
   // JSON-LD for Google Jobs
   const jsonLd = {
@@ -88,8 +95,8 @@ export default async function JobDetailPage({ params }) {
       currency: 'GBP',
       value: {
         '@type': 'QuantitativeValue',
-        minValue: job.salary_min,
-        maxValue: job.salary_max,
+        minValue: salaryMin,
+        maxValue: salaryMax,
         unitText: 'YEAR',
       },
     }
@@ -111,31 +118,52 @@ export default async function JobDetailPage({ params }) {
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h1 className="text-2xl font-black font-display tracking-tight">{job.title}</h1>
               {claimed ? (
-                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-pw-greenDark text-pw-green font-bold border border-pw-green/20">✓ VERIFIED</span>
+                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-pw-greenDark text-pw-greenText font-bold border border-pw-green/20">✓ VERIFIED</span>
               ) : (
-                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-pw-amberDark text-pw-amber font-semibold">UNCLAIMED</span>
+                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-pw-amberDark text-pw-amberText font-semibold">UNCLAIMED</span>
               )}
             </div>
             <p className="text-sm text-pw-text2">{company?.name} · {job.location} · {job.remote_policy}</p>
             <div className="flex items-center gap-3 mt-3 flex-wrap">
-              {hasSalary && job.salary_min !== job.salary_max ? (
-                <span className="font-mono text-xl font-bold text-pw-green">£{Math.round(job.salary_min/1000)}k–{Math.round(job.salary_max/1000)}k</span>
-              ) : hasSalary && job.salary_min === job.salary_max ? (
-                <span className="font-mono text-lg text-pw-amber">~£{Math.round(job.salary_min/1000)}k <span className="text-xs text-pw-muted font-normal">(estimated)</span></span>
+              {hasSalary && !isEstimate ? (
+                <span className="font-mono text-xl font-bold text-pw-green">£{Math.round(salaryMin/1000)}k–{Math.round(salaryMax/1000)}k</span>
+              ) : hasSalary && isEstimate ? (
+                <span className="font-mono text-lg text-pw-amber">~£{Math.round(salaryMin/1000)}k <span className="text-xs text-pw-muted font-normal">(estimated)</span></span>
               ) : null}
               {job.has_challenge && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-pw-greenDark text-pw-green font-bold border border-pw-green/20">⚡ Skill challenge</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-pw-greenDark text-pw-greenText font-bold border border-pw-green/20">⚡ Skill challenge</span>
+              )}
+            </div>
+            {/* Extracted detail badges */}
+            <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+              {details.contract && (
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200">{details.contract}</span>
+              )}
+              {details.workType && (
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-purple-50 text-purple-700 border border-purple-200">{details.workType}</span>
+              )}
+              {details.remote && (
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 border border-teal-200">{details.remote}</span>
+              )}
+              {details.level && (
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 border border-gray-200">{details.level}</span>
+              )}
+              {details.clearance && (
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-red-50 text-red-700 border border-red-200">{details.clearance}</span>
+              )}
+              {details.visa && (
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-green-50 text-green-700 border border-green-200">{details.visa}</span>
               )}
             </div>
           </div>
-          <TrustRing score={job.trust_score} size={64} label="trust" />
+          <TrustRing score={job.trust_score} size={64} label="transparency" />
         </div>
       </div>
 
       {/* Unclaimed banner */}
       {!claimed && (
         <div className="bg-pw-amberDark border border-pw-amber/20 rounded-xl p-4 mb-3">
-          <p className="text-sm text-pw-amber leading-relaxed">
+          <p className="text-sm text-pw-amberText leading-relaxed">
             <strong>This listing was indexed from {company?.name || 'the'} career page.</strong> Salary, benefits, progression, and satisfaction data are not verified. The trust score reflects what's missing.
           </p>
         </div>
@@ -233,7 +261,7 @@ export default async function JobDetailPage({ params }) {
           <div className="bg-pw-card border border-pw-border rounded-xl p-4">
             <div className="text-center mb-3">
               <TrustRing score={job.trust_score} size={80} />
-              <div className="text-[10px] font-mono text-pw-muted uppercase tracking-wider mt-2">Transparency score</div>
+              <div className="text-[10px] font-mono text-pw-muted uppercase tracking-wider mt-2">Transparency</div>
             </div>
             <TrustBar label="Salary" earned={hasSalary ? 30 : 0} max={30} has={hasSalary} />
             <TrustBar label="Benefits" earned={hasBenefits ? 20 : 0} max={20} has={hasBenefits} />
@@ -245,7 +273,7 @@ export default async function JobDetailPage({ params }) {
           <div className="mt-3">
             {claimed ? (
               <>
-                <Link href={`/jobs/${job.slug}/apply`} className="block w-full py-3.5 rounded-lg bg-pw-green text-black font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
+                <Link href={`/jobs/${job.slug}/apply`} className="block w-full py-3.5 rounded-lg bg-pw-green text-white font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
                   Apply via ProofWork →
                 </Link>
                 <div className="text-[10px] text-pw-muted text-center mt-2 font-mono">
@@ -254,16 +282,20 @@ export default async function JobDetailPage({ params }) {
               </>
             ) : (
               <>
-                {job.source_url ? (
-                  <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-pw-amber text-black font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-amber-500/20 transition-all">
+                {(job.source_url && job.source_url.startsWith('http')) ? (
+                  <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-pw-amber text-white font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-amber-500/20 transition-all">
                     Apply on {company?.name || 'company'} site →
                   </a>
-                ) : (
-                  <a href={company?.careers_url || company?.website || '#'} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-pw-amber text-black font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-amber-500/20 transition-all">
+                ) : (company?.careers_url || company?.website) ? (
+                  <a href={company?.careers_url || company?.website} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-pw-amber text-white font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-amber-500/20 transition-all">
                     Visit {company?.name || 'company'} careers →
                   </a>
+                ) : (
+                  <a href={'https://www.google.com/search?q=' + encodeURIComponent(job.title + ' ' + (company?.name || '') + ' careers apply')} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-gray-100 text-pw-text1 font-extrabold text-sm text-center hover:bg-gray-200 transition-all border border-pw-border">
+                    Search for this role →
+                  </a>
                 )}
-                <div className="text-[10px] text-pw-amber text-center mt-2 font-mono">
+                <div className="text-[10px] text-pw-amberText text-center mt-2 font-mono">
                   Redirects to employer's site · not tracked
                 </div>
                 <div className="mt-3 p-3 bg-pw-card border border-pw-border rounded-lg">

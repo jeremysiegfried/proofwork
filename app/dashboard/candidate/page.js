@@ -34,11 +34,11 @@ export default function CandidateDashboard() {
   )
 
   const STATUS_CONFIG = {
-    submitted: { label: 'Submitted', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', desc: 'Your application has been received' },
-    reviewing: { label: 'Under review', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', desc: 'The employer is reviewing your application' },
-    interview: { label: 'Interview', color: 'bg-pw-greenDark text-pw-green border-pw-green/20', desc: 'You\'ve been invited to interview!' },
-    rejected: { label: 'Not progressed', color: 'bg-red-500/10 text-red-400 border-red-500/20', desc: 'The employer has decided not to progress' },
-    offer: { label: 'Offer!', color: 'bg-pw-greenDark text-pw-green border-pw-green/20', desc: 'Congratulations — you have an offer!' },
+    submitted: { label: 'Submitted', color: 'bg-blue-50 text-blue-700 border-blue-200', desc: 'Your application has been received' },
+    reviewing: { label: 'Under review', color: 'bg-amber-50 text-amber-700 border-amber-200', desc: 'The employer is reviewing your application' },
+    interview: { label: 'Interview', color: 'bg-green-50 text-green-700 border-green-200', desc: 'You\'ve been invited to interview!' },
+    rejected: { label: 'Not progressed', color: 'bg-red-50 text-red-700 border-red-200', desc: 'The employer has decided not to progress' },
+    offer: { label: 'Offer!', color: 'bg-green-50 text-green-700 border-green-200', desc: 'Congratulations — you have an offer!' },
   }
 
   return (
@@ -56,7 +56,7 @@ export default function CandidateDashboard() {
         <div className="bg-pw-card border border-pw-border rounded-xl p-8 text-center">
           <h2 className="font-display text-lg font-bold mb-2">No applications yet</h2>
           <p className="text-sm text-pw-text2 mb-4">Browse jobs and submit your first application to see it tracked here.</p>
-          <Link href="/jobs" className="inline-block px-6 py-2.5 rounded-lg bg-pw-green text-black font-bold text-sm hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
+          <Link href="/jobs" className="inline-block px-6 py-2.5 rounded-lg bg-pw-green text-white font-bold text-sm hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
             Browse jobs →
           </Link>
         </div>

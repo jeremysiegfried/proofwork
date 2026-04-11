@@ -6,9 +6,9 @@ export default function Nav() {
   const { user, profile, loading, signOut } = useAuth()
 
   return (
-    <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 border-b border-pw-border bg-pw-bg/90 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 border-b border-pw-border bg-white/90 backdrop-blur-md">
       <div className="flex items-center gap-5">
-        <Link href="/" className="font-display text-[22px] font-black tracking-tight">
+        <Link href="/" className="font-display text-[22px] font-black tracking-tight text-pw-text1">
           proof<span className="text-pw-green">work</span>
         </Link>
         <div className="h-4 w-px bg-pw-border" />
@@ -26,7 +26,7 @@ export default function Nav() {
               <div className="text-xs font-semibold text-pw-text3">{profile?.full_name || user.email}</div>
               <div className="text-[10px] text-pw-muted font-mono capitalize">{profile?.role || 'user'}</div>
             </div>
-            <Link href="/dashboard" className="px-3 py-1.5 rounded-md bg-pw-card border border-pw-border text-xs font-semibold text-pw-text2 hover:text-pw-text1 transition-colors">
+            <Link href="/dashboard" className="px-3 py-1.5 rounded-md bg-pw-bg border border-pw-border text-xs font-semibold text-pw-text2 hover:text-pw-text1 transition-colors">
               Dashboard
             </Link>
             <button onClick={signOut} className="text-xs text-pw-muted hover:text-pw-text2 transition-colors">
@@ -38,7 +38,7 @@ export default function Nav() {
             <Link href="/login" className="px-3 py-1.5 rounded-md text-xs font-semibold text-pw-text2 hover:text-pw-text1 transition-colors">
               Log in
             </Link>
-            <Link href="/signup" className="px-4 py-2 rounded-md bg-pw-green text-black text-xs font-bold hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
+            <Link href="/signup" className="px-4 py-2 rounded-md bg-pw-green text-white text-xs font-bold hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
               Sign up
             </Link>
           </div>
