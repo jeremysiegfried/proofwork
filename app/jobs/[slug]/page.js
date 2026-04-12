@@ -285,7 +285,14 @@ export default async function JobDetailPage({ params }) {
                 <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-pw-amberDark text-pw-amberText font-semibold">UNCLAIMED</span>
               )}
             </div>
-            <p className="text-sm text-pw-text2">{company?.name} · {job.location} · {job.remote_policy}</p>
+            <p className="text-sm text-pw-text2">
+              {company?.slug ? (
+                <Link href={'/companies/' + company.slug} className="font-semibold hover:text-pw-green transition-colors">{company?.name}</Link>
+              ) : (
+                <span>{company?.name}</span>
+              )}
+              {' · '}{job.location}{' · '}{job.remote_policy}
+            </p>
             <div className="flex items-center gap-3 mt-3 flex-wrap">
               {hasSalary && !isEstimate ? (
                 <span className="font-mono text-xl font-bold text-pw-green">£{Math.round(salaryMin/1000)}k–{Math.round(salaryMax/1000)}k</span>
@@ -440,6 +447,29 @@ export default async function JobDetailPage({ params }) {
               </>
             )}
           </div>
+
+          {/* Skill Assessment CTA */}
+          <div className="mt-3 bg-pw-card border border-pw-border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">⚡</span>
+              <div className="text-sm font-bold text-pw-text1">Skill Assessment</div>
+            </div>
+            <p className="text-xs text-pw-text2 leading-relaxed mb-3">
+              Stand out from other applicants. Complete a timed skill challenge tailored to this role and get a verified score.
+            </p>
+            <Link href={'/assessment/' + job.id} className="block w-full py-2.5 rounded-lg border-2 border-pw-green text-pw-green font-bold text-sm text-center hover:bg-pw-greenDark transition-all">
+              Take assessment →
+            </Link>
+          </div>
+
+          {/* Company link */}
+          {company?.slug && (
+            <div className="mt-3">
+              <Link href={'/companies/' + company.slug} className="block w-full py-2.5 rounded-lg bg-pw-bg border border-pw-border text-pw-text2 font-semibold text-xs text-center hover:border-pw-green/30 hover:text-pw-green transition-all">
+                View all {company.name} jobs →
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
