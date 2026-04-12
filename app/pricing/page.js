@@ -1,16 +1,13 @@
+import CheckoutButton from '@/components/CheckoutButton'
 import Link from 'next/link'
 
-export const metadata = {
+export var metadata = {
   title: 'Pricing — ShowJob',
   description: 'Transparent pricing for employers. Free to claim, paid to grow.',
 }
 
-function Check() {
-  return <span className="text-pw-green">✓</span>
-}
-function Cross() {
-  return <span className="text-pw-muted">—</span>
-}
+function Check() { return <span className="text-pw-green">✓</span> }
+function Cross() { return <span className="text-pw-muted">—</span> }
 
 export default function PricingPage() {
   var tiers = [
@@ -18,9 +15,9 @@ export default function PricingPage() {
       name: 'Starter',
       price: 'Free',
       period: 'forever',
-      description: 'Claim your listings and show candidates you\'re transparent.',
+      plan: 'free',
+      description: "Claim your listings and show candidates you're transparent.",
       cta: 'Get started',
-      ctaHref: '/signup',
       highlight: false,
       features: [
         { label: 'Claim existing listings', has: true },
@@ -41,9 +38,9 @@ export default function PricingPage() {
       name: 'Growth',
       price: '£99',
       period: '/month',
+      plan: 'growth',
       description: 'For growing teams. Post unlimited jobs, track every applicant.',
       cta: 'Start hiring',
-      ctaHref: '/signup',
       highlight: true,
       features: [
         { label: 'Claim existing listings', has: true },
@@ -64,9 +61,9 @@ export default function PricingPage() {
       name: 'Scale',
       price: '£499',
       period: '/month',
+      plan: 'scale',
       description: 'For serious hiring. Pre-screened candidates with verified skill scores.',
-      cta: 'Contact us',
-      ctaHref: '/signup',
+      cta: 'Upgrade to Scale',
       highlight: false,
       features: [
         { label: 'Claim existing listings', has: true },
@@ -87,10 +84,9 @@ export default function PricingPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">
-      {/* Header */}
       <div className="text-center mb-12">
         <p className="font-mono text-xs text-pw-green uppercase tracking-[3px] mb-3">Employer pricing</p>
-        <h1 className="font-display text-4xl font-black tracking-tight mb-3 text-pw-text1">
+        <h1 className="font-display text-3xl sm:text-4xl font-black tracking-tight mb-3 text-pw-text1">
           Hire better.<br />
           <span className="text-pw-green">Pay less than a recruiter.</span>
         </h1>
@@ -99,7 +95,6 @@ export default function PricingPage() {
         </p>
       </div>
 
-      {/* Pricing cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
         {tiers.map(function(tier) {
           return (
@@ -119,9 +114,9 @@ export default function PricingPage() {
                 <p className="text-sm text-pw-text2 leading-relaxed">{tier.description}</p>
               </div>
 
-              <Link href={tier.ctaHref} className={'block w-full py-3 rounded-lg font-bold text-sm text-center transition-all mb-5 ' + (tier.highlight ? 'bg-pw-green text-white hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20' : 'bg-pw-bg border border-pw-border text-pw-text1 hover:border-pw-green/30 hover:text-pw-green')}>
-                {tier.cta} →
-              </Link>
+              <div className="mb-5">
+                <CheckoutButton plan={tier.plan} label={tier.cta} highlight={tier.highlight} />
+              </div>
 
               <div className="border-t border-pw-border pt-4">
                 {tier.features.map(function(f) {
@@ -175,11 +170,6 @@ export default function PricingPage() {
           <div className="text-xs text-pw-muted py-2">Varies</div>
           <div className="text-xs text-pw-muted py-2">Volume over quality</div>
           <div className="text-xs text-pw-green py-2 font-semibold bg-pw-greenDark rounded-lg">Pre-screened</div>
-
-          <div className="text-xs text-pw-text3 text-left py-2">Transparency score</div>
-          <div className="text-xs text-pw-muted py-2">—</div>
-          <div className="text-xs text-pw-muted py-2">—</div>
-          <div className="text-xs text-pw-green py-2 font-semibold bg-pw-greenDark rounded-lg">Public score</div>
         </div>
       </div>
 
@@ -188,26 +178,11 @@ export default function PricingPage() {
         <h3 className="font-display text-lg font-bold text-pw-text1 mb-4 text-center">Common questions</h3>
         <div className="flex flex-col gap-3">
           {[
-            {
-              q: 'What happens when I claim a listing?',
-              a: 'Your scraped job listing gets a verified badge, your transparency score updates based on the data you provide, and candidates see you\'re a real employer who cares about transparency. It\'s free and takes 2 minutes.'
-            },
-            {
-              q: 'Can I try before I pay?',
-              a: 'Absolutely. The Starter plan is free forever. Claim your listings, add your company data, and see how candidates respond. Upgrade when you\'re ready to hire at scale.'
-            },
-            {
-              q: 'What are AI skill assessments?',
-              a: 'Role-specific challenges that candidates complete before their application reaches you. A developer might solve a coding task, a PM might do a case study. AI grades the submission and you see a verified skill score alongside every application — no more guessing from CVs.'
-            },
-            {
-              q: 'How is this different from Indeed or LinkedIn?',
-              a: 'They give you 200 CVs and let you figure it out. We give you 10 pre-screened candidates with verified skill scores, ranked by fit. Our transparency scores also mean candidates trust your listings more, so you get higher-quality applicants.'
-            },
-            {
-              q: 'Can I cancel anytime?',
-              a: 'Yes. No contracts, no lock-in. Cancel your subscription and you keep your claimed listings on the free plan.'
-            },
+            { q: 'What happens when I claim a listing?', a: "Your scraped job listing gets a verified badge, your transparency score updates based on the data you provide, and candidates see you're a real employer who cares about transparency. It's free and takes 2 minutes." },
+            { q: 'Can I try before I pay?', a: "Absolutely. The Starter plan is free forever. Claim your listings, add your company data, and see how candidates respond. Upgrade when you're ready to hire at scale." },
+            { q: 'What are AI skill assessments?', a: "Role-specific challenges that candidates complete before their application reaches you. A developer might solve a coding task, a PM might do a case study. AI grades the submission and you see a verified skill score alongside every application — no more guessing from CVs." },
+            { q: 'How is this different from Indeed or LinkedIn?', a: "They give you 200 CVs and let you figure it out. We give you pre-screened candidates with verified skill scores, ranked by fit. Our transparency scores also mean candidates trust your listings more, so you get higher-quality applicants." },
+            { q: 'Can I cancel anytime?', a: "Yes. No contracts, no lock-in. Cancel your subscription and you keep your claimed listings on the free plan." },
           ].map(function(faq) {
             return (
               <div key={faq.q} className="bg-white border border-pw-border rounded-xl p-4">
@@ -219,7 +194,6 @@ export default function PricingPage() {
         </div>
       </div>
 
-      {/* Bottom CTA */}
       <div className="text-center mt-12 mb-4">
         <h3 className="font-display text-2xl font-black tracking-tight text-pw-text1 mb-2">Ready to hire smarter?</h3>
         <p className="text-sm text-pw-text2 mb-5">Join employers who choose transparency over guesswork.</p>
