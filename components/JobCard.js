@@ -1,4 +1,6 @@
+'use client'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import TrustRing from './TrustRing'
 
 function getLevel(title) {
@@ -13,20 +15,26 @@ function getLevel(title) {
 }
 
 export default function JobCard({ job, company }) {
+  var router = useRouter()
   var hasSalary = job.salary_min > 0
   var claimed = company ? company.claimed : false
   var isEstimate = hasSalary && job.salary_min === job.salary_max
   var level = getLevel(job.title)
 
+  function handleCardClick(e) {
+    // Don't navigate if clicking the company link
+    if (e.target.closest('[data-company-link]')) return
+    router.push('/jobs/' + job.slug)
+  }
+
   return (
-    <div className={'bg-white border border-pw-border rounded-xl p-4 sm:p-5 transition-all hover:border-pw-green/40 hover:shadow-sm ' + (claimed ? 'border-l-[3px] border-l-pw-green' : '')}>
+    <div onClick={handleCardClick}
+      className={'bg-white border border-pw-border rounded-xl p-4 sm:p-5 cursor-pointer transition-all hover:border-pw-green/40 hover:shadow-sm ' + (claimed ? 'border-l-[3px] border-l-pw-green' : '')}>
       <div className="flex justify-between items-start gap-3">
         <div className="flex-1 min-w-0">
           {/* Title */}
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            <Link href={'/jobs/' + job.slug} className="text-[15px] font-bold font-display tracking-tight text-pw-text1 hover:text-pw-green transition-colors">
-              {job.title}
-            </Link>
+            <span className="text-[15px] font-bold font-display tracking-tight text-pw-text1">{job.title}</span>
             {claimed && (
               <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-pw-greenDark text-pw-greenText font-bold border border-pw-green/20">✓ VERIFIED</span>
             )}
@@ -35,7 +43,9 @@ export default function JobCard({ job, company }) {
           {/* Info bar */}
           <div className="text-[13px] text-pw-text2 mb-2">
             {company && company.slug ? (
-              <Link href={'/companies/' + company.slug} className="font-semibold text-pw-text3 hover:text-pw-green transition-colors">
+              <Link href={'/companies/' + company.slug} data-company-link="true"
+                className="font-semibold text-pw-text3 hover:text-pw-green transition-colors"
+                onClick={function(e) { e.stopPropagation() }}>
                 {company.name}
               </Link>
             ) : (
@@ -78,9 +88,7 @@ export default function JobCard({ job, company }) {
             </div>
           )}
         </div>
-        <Link href={'/jobs/' + job.slug}>
-          <TrustRing score={job.trust_score} size={44} label="transparency" />
-        </Link>
+        <TrustRing score={job.trust_score} size={44} label="transparency" />
       </div>
     </div>
   )
