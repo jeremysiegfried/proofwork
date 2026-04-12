@@ -22,6 +22,7 @@ export default function Nav() {
         {profile?.role === 'employer' && (
           <Link href="/dashboard/employer" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">Dashboard</Link>
         )}
+        <Link href="/pricing" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">Pricing</Link>
       </div>
       <div className="flex items-center gap-3">
         {loading ? (
