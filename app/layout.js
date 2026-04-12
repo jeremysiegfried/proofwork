@@ -66,6 +66,8 @@ export default function RootLayout({ children }) {
               <div className="border-t border-pw-border pt-4 flex justify-between items-center flex-wrap gap-2">
                 <span className="text-[10px] text-pw-muted font-mono">© 2026 ShowJob. All rights reserved.</span>
                 <div className="flex gap-4">
+                  <Link href="/terms" className="text-[10px] text-pw-muted font-mono hover:text-pw-green transition-colors">Terms</Link>
+                  <Link href="/privacy" className="text-[10px] text-pw-muted font-mono hover:text-pw-green transition-colors">Privacy</Link>
                   <Link href="/jobs" className="text-[10px] text-pw-muted font-mono hover:text-pw-green transition-colors">Jobs</Link>
                   <Link href="/companies" className="text-[10px] text-pw-muted font-mono hover:text-pw-green transition-colors">Companies</Link>
                   <Link href="/salaries" className="text-[10px] text-pw-muted font-mono hover:text-pw-green transition-colors">Salaries</Link>
