@@ -74,7 +74,7 @@ export default function SignupPage() {
 
   return (
     <div className="max-w-md mx-auto px-6 py-16">
-      <h1 className="font-display text-3xl font-black tracking-tight text-center mb-2">Join ProofWork</h1>
+      <h1 className="font-display text-3xl font-black tracking-tight text-center mb-2">Join ShowJob</h1>
       <p className="text-sm text-pw-text2 text-center mb-8">Create your account to get started</p>
 
       {/* Role selection */}

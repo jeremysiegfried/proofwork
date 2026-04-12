@@ -23,7 +23,7 @@ export default function LoginPage() {
   return (
     <div className="max-w-sm mx-auto px-6 py-20">
       <h1 className="font-display text-3xl font-black tracking-tight text-center mb-2">Welcome back</h1>
-      <p className="text-sm text-pw-text2 text-center mb-8">Log in to your ProofWork account</p>
+      <p className="text-sm text-pw-text2 text-center mb-8">Log in to your ShowJob account</p>
       <form onSubmit={handleLogin}>
         <div className="bg-pw-card border border-pw-border rounded-xl p-5">
           {error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">{error}</div>}

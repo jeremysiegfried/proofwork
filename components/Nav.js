@@ -9,7 +9,7 @@ export default function Nav() {
     <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 border-b border-pw-border bg-white/90 backdrop-blur-md">
       <div className="flex items-center gap-5">
         <Link href="/" className="font-display text-[22px] font-black tracking-tight text-pw-text1">
-          proof<span className="text-pw-green">work</span>
+          show<span className="text-pw-green">job</span>
         </Link>
         <div className="h-4 w-px bg-pw-border" />
         <Link href="/jobs" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">Jobs</Link>

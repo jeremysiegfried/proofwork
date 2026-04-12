@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import JobCard from './JobCard'
 import { supabase } from '@/lib/supabase'
 
@@ -50,47 +51,101 @@ var SALARY_OPTIONS = [
 
 var PAGE_SIZE = 30
 
+// Score a job's relevance to search terms
+function scoreRelevance(job, searchWords) {
+  var title = (job.title || '').toLowerCase()
+  var companyName = (job.companies?.name || '').toLowerCase()
+  var score = 0
+
+  // Exact full query match in title = highest score
+  var fullQuery = searchWords.join(' ')
+  if (title.includes(fullQuery)) score += 100
+
+  // Each matching word in title
+  for (var i = 0; i < searchWords.length; i++) {
+    var word = searchWords[i].toLowerCase()
+    if (title.includes(word)) {
+      score += 20
+      // Bonus if word appears at the start of the title
+      if (title.startsWith(word)) score += 5
+    }
+    // Company name match (lower priority)
+    if (companyName.includes(word)) score += 5
+  }
+
+  // Bonus: all search words found in title = strong match
+  var allMatch = true
+  for (var j = 0; j < searchWords.length; j++) {
+    if (!title.includes(searchWords[j].toLowerCase())) { allMatch = false; break }
+  }
+  if (allMatch) score += 50
+
+  // Small trust score bonus as tiebreaker
+  score += (job.trust_score || 0) / 100
+
+  return score
+}
+
 export default function JobsList() {
+  var searchParams = useSearchParams()
   var s = useState
+
+  // Read URL params for initial values
+  var initQuery = searchParams.get('q') || ''
+  var initRegion = searchParams.get('region') || 'All'
+  var initSalary = parseInt(searchParams.get('salary') || '0') || 0
+  var initRemote = searchParams.get('remote') || ''
+
   var [jobs, setJobs] = s([])
   var [loading, setLoading] = s(true)
   var [loadingMore, setLoadingMore] = s(false)
-  var [query, setQuery] = s('')
-  var [region, setRegion] = s('All')
+  var [query, setQuery] = s(initQuery)
+  var [region, setRegion] = s(initRegion)
   var [sort, setSort] = s('trust')
   var [showVerifiedOnly, setShowVerifiedOnly] = s(false)
-  var [minSalary, setMinSalary] = s(0)
+  var [minSalary, setMinSalary] = s(initSalary)
   var [jobField, setJobField] = s('')
   var [expLevel, setExpLevel] = s('')
-  var [showFilters, setShowFilters] = s(false)
+  var [showFilters, setShowFilters] = s(initSalary > 0 || initRemote)
   var [page, setPage] = s(0)
   var [hasMore, setHasMore] = s(true)
   var [totalCount, setTotalCount] = s(0)
   var [searchTimeout, setSearchTimeout] = s(null)
+  var [remoteFilter, setRemoteFilter] = s(initRemote)
 
   var fetchJobs = useCallback(function(pageNum, append) {
     if (pageNum === 0) setLoading(true)
     else setLoadingMore(true)
+
+    var isSearching = query.trim().length > 0
+    var searchWords = query.trim().split(/\s+/).filter(function(w) { return w.length >= 2 })
 
     var q = supabase
       .from('jobs')
       .select('*, companies!inner(*)', { count: 'exact' })
       .eq('active', true)
 
-    // Search — ALL words must appear in title
-    if (query.trim()) {
-      var words = query.trim().split(/\s+/)
-      for (var w = 0; w < words.length; w++) {
-        if (words[w].length >= 2) {
-          q = q.ilike('title', '%' + words[w] + '%')
-        }
+    // Search — use OR to match title OR company name, then sort by relevance client-side
+    if (isSearching && searchWords.length > 0) {
+      // Build OR clauses: each word can appear in title OR company name
+      var orClauses = []
+      for (var w = 0; w < searchWords.length; w++) {
+        orClauses.push('title.ilike.%' + searchWords[w] + '%')
+        orClauses.push('companies.name.ilike.%' + searchWords[w] + '%')
       }
+      q = q.or(orClauses.join(','))
     }
 
     if (region === 'Remote') {
       q = q.ilike('remote_policy', '%Remote%')
     } else if (region !== 'All') {
       q = q.eq('location', region)
+    }
+
+    if (remoteFilter) {
+      if (remoteFilter === 'Remote') q = q.ilike('remote_policy', '%Remote%')
+      else if (remoteFilter === 'Hybrid') q = q.eq('remote_policy', 'Hybrid')
+      else if (remoteFilter === 'On-site') q = q.eq('remote_policy', 'On-site')
     }
 
     if (showVerifiedOnly) {
@@ -103,8 +158,8 @@ export default function JobsList() {
 
     if (jobField) {
       var fieldKeywords = jobField.split(',')
-      var orClauses = fieldKeywords.map(function(kw) { return 'title.ilike.%' + kw.trim() + '%' }).join(',')
-      q = q.or(orClauses)
+      var fieldClauses = fieldKeywords.map(function(kw) { return 'title.ilike.%' + kw.trim() + '%' }).join(',')
+      q = q.or(fieldClauses)
     }
 
     if (expLevel) {
@@ -113,25 +168,56 @@ export default function JobsList() {
       q = q.or(expClauses)
     }
 
-    if (sort === 'salary') q = q.order('salary_min', { ascending: false })
-    else if (sort === 'recent') q = q.order('created_at', { ascending: false })
-    else q = q.order('trust_score', { ascending: false })
+    // When searching, fetch more results so we can sort by relevance client-side
+    // When not searching, use the selected sort
+    if (isSearching) {
+      // Fetch a larger batch for relevance sorting
+      q = q.order('trust_score', { ascending: false })
+      var fetchSize = PAGE_SIZE * 3 // fetch more so relevance sort has good candidates
+      var from = pageNum * PAGE_SIZE
+      q = q.range(0, fetchSize - 1) // always fetch from 0 for relevance sorting
+    } else {
+      if (sort === 'salary') q = q.order('salary_min', { ascending: false })
+      else if (sort === 'recent') q = q.order('created_at', { ascending: false })
+      else q = q.order('trust_score', { ascending: false })
 
-    var from = pageNum * PAGE_SIZE
-    q = q.range(from, from + PAGE_SIZE - 1)
+      var from = pageNum * PAGE_SIZE
+      q = q.range(from, from + PAGE_SIZE - 1)
+    }
 
     q.then(function(result) {
       if (result.error) { setLoading(false); setLoadingMore(false); return }
-      if (append) setJobs(function(prev) { return prev.concat(result.data || []) })
-      else setJobs(result.data || [])
-      setTotalCount(result.count || 0)
-      setHasMore((result.data || []).length === PAGE_SIZE)
+
+      var data = result.data || []
+
+      // If searching, sort by relevance
+      if (isSearching && searchWords.length > 0) {
+        data = data.map(function(job) {
+          return { ...job, _relevance: scoreRelevance(job, searchWords) }
+        })
+        data.sort(function(a, b) { return b._relevance - a._relevance })
+
+        // Paginate the sorted results
+        var start = pageNum * PAGE_SIZE
+        var paged = data.slice(start, start + PAGE_SIZE)
+
+        if (append) setJobs(function(prev) { return prev.concat(paged) })
+        else setJobs(paged)
+        setTotalCount(result.count || 0)
+        setHasMore(start + PAGE_SIZE < data.length)
+      } else {
+        if (append) setJobs(function(prev) { return prev.concat(data) })
+        else setJobs(data)
+        setTotalCount(result.count || 0)
+        setHasMore(data.length === PAGE_SIZE)
+      }
+
       setLoading(false)
       setLoadingMore(false)
     })
-  }, [query, region, sort, showVerifiedOnly, minSalary, jobField, expLevel])
+  }, [query, region, sort, showVerifiedOnly, minSalary, jobField, expLevel, remoteFilter])
 
-  useEffect(function() { setPage(0); fetchJobs(0, false) }, [region, sort, showVerifiedOnly, minSalary, jobField, expLevel])
+  useEffect(function() { setPage(0); fetchJobs(0, false) }, [region, sort, showVerifiedOnly, minSalary, jobField, expLevel, remoteFilter])
 
   useEffect(function() {
     if (searchTimeout) clearTimeout(searchTimeout)
@@ -142,10 +228,10 @@ export default function JobsList() {
 
   function loadMore() { var np = page + 1; setPage(np); fetchJobs(np, true) }
 
-  var activeFilterCount = (minSalary > 0 ? 1 : 0) + (jobField ? 1 : 0) + (expLevel ? 1 : 0) + (showVerifiedOnly ? 1 : 0)
+  var activeFilterCount = (minSalary > 0 ? 1 : 0) + (jobField ? 1 : 0) + (expLevel ? 1 : 0) + (showVerifiedOnly ? 1 : 0) + (remoteFilter ? 1 : 0)
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-6">
+    <div className="max-w-5xl mx-auto px-6 py-6">
       <h1 className="font-display text-2xl font-black tracking-tight mb-1 text-pw-text1">Open roles</h1>
       <p className="text-xs text-pw-muted font-mono mb-4">
         {totalCount.toLocaleString()} jobs{query ? ' matching "' + query + '"' : ''}{region !== 'All' ? ' in ' + region : ''}
@@ -174,6 +260,13 @@ export default function JobsList() {
         </div>
       </div>
 
+      {/* Active search indicator */}
+      {query.trim() && (
+        <div className="mb-3 text-[10px] font-mono text-pw-green">
+          ↑ Sorted by relevance to "{query}"
+        </div>
+      )}
+
       <div className="mb-4">
         <button onClick={function() { setShowFilters(!showFilters) }}
           className={'text-xs font-semibold transition-all ' + (showFilters || activeFilterCount > 0 ? 'text-pw-green' : 'text-pw-muted hover:text-pw-text2')}>
@@ -182,7 +275,7 @@ export default function JobsList() {
 
         {showFilters && (
           <div className="mt-2 p-4 bg-white border border-pw-border rounded-xl">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label className="text-[10px] font-mono text-pw-muted uppercase tracking-wider mb-1 block">Min salary</label>
                 <select value={minSalary} onChange={function(e) { setMinSalary(parseInt(e.target.value)) }}
@@ -204,6 +297,16 @@ export default function JobsList() {
                   {EXP_LEVELS.map(function(f) { return <option key={f.label} value={f.value}>{f.label}</option> })}
                 </select>
               </div>
+              <div>
+                <label className="text-[10px] font-mono text-pw-muted uppercase tracking-wider mb-1 block">Remote</label>
+                <select value={remoteFilter} onChange={function(e) { setRemoteFilter(e.target.value) }}
+                  className="w-full px-3 py-2 rounded-md border border-pw-border bg-pw-bg text-sm text-pw-text1 appearance-none">
+                  <option value="">Any</option>
+                  <option value="Remote">Fully remote</option>
+                  <option value="Hybrid">Hybrid</option>
+                  <option value="On-site">On-site</option>
+                </select>
+              </div>
             </div>
             <div className="flex items-center gap-3 mt-3 flex-wrap">
               <button onClick={function() { setShowVerifiedOnly(!showVerifiedOnly) }}
@@ -211,7 +314,7 @@ export default function JobsList() {
                   (showVerifiedOnly ? 'bg-pw-greenDark text-pw-greenText border border-pw-green/20' : 'bg-pw-bg text-pw-muted border border-pw-border')
                 }>✓ Verified only</button>
               {activeFilterCount > 0 && (
-                <button onClick={function() { setMinSalary(0); setJobField(''); setExpLevel(''); setShowVerifiedOnly(false) }}
+                <button onClick={function() { setMinSalary(0); setJobField(''); setExpLevel(''); setShowVerifiedOnly(false); setRemoteFilter('') }}
                   className="text-xs text-red-500 hover:underline">Clear all</button>
               )}
               {minSalary > 0 && (
@@ -229,7 +332,7 @@ export default function JobsList() {
       ) : jobs.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-pw-text2 mb-2">No jobs match your filters</p>
-          <button onClick={function() { setQuery(''); setRegion('All'); setShowVerifiedOnly(false); setMinSalary(0); setJobField(''); setExpLevel('') }}
+          <button onClick={function() { setQuery(''); setRegion('All'); setShowVerifiedOnly(false); setMinSalary(0); setJobField(''); setExpLevel(''); setRemoteFilter('') }}
             className="text-pw-green text-sm hover:underline">Clear all filters</button>
         </div>
       ) : (

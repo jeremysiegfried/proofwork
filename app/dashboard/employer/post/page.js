@@ -181,7 +181,7 @@ export default function PostJobPage() {
     <div className="max-w-md mx-auto px-6 py-16 text-center">
       <div className="w-16 h-16 rounded-full bg-pw-green flex items-center justify-center mx-auto mb-5 text-2xl text-black">✓</div>
       <h1 className="font-display text-3xl font-black tracking-tight mb-2">{editId ? 'Job updated!' : 'Job posted!'}</h1>
-      <p className="text-sm text-pw-text2 mb-6">{form.title} is now live on ProofWork.</p>
+      <p className="text-sm text-pw-text2 mb-6">{form.title} is now live on ShowJob.</p>
       <div className="bg-pw-card border border-pw-border rounded-xl p-4 mb-6 text-left">
         <div className="flex justify-between items-center mb-2">
           <span className="text-xs font-mono text-pw-muted uppercase">Trust score</span>
@@ -248,7 +248,7 @@ export default function PostJobPage() {
               <input type="number" value={form.salary_max} onChange={e => update('salary_max', e.target.value)} placeholder="e.g. 95000" className="w-full px-3 py-2.5 rounded-md border border-pw-border bg-pw-bg text-sm text-pw-text1" />
             </div>
           </div>
-          <div className="text-[10px] text-pw-green mb-3">Salary is mandatory on ProofWork — it's what makes candidates trust your listing.</div>
+          <div className="text-[10px] text-pw-green mb-3">Salary is mandatory on ShowJob — it's what makes candidates trust your listing.</div>
           <div className="mb-3">
             <label className="text-xs font-semibold text-pw-text3 mb-1 block">Job type</label>
             <div className="flex gap-2">

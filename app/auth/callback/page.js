@@ -67,7 +67,7 @@ export default function AuthCallbackPage() {
     <div className="max-w-sm mx-auto px-6 py-20 text-center">
       <div className="w-16 h-16 rounded-full bg-pw-green flex items-center justify-center mx-auto mb-5 text-2xl text-black">✓</div>
       <h1 className="font-display text-3xl font-black tracking-tight mb-2">Email confirmed!</h1>
-      <p className="text-sm text-pw-text2 mb-8">Your ProofWork account is ready. You can now log in and start using the platform.</p>
+      <p className="text-sm text-pw-text2 mb-8">Your ShowJob account is ready. You can now log in and start using the platform.</p>
       <div className="flex gap-3">
         <Link href="/login" className="flex-1 py-3 rounded-lg bg-pw-green text-white font-bold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
           Log in →
