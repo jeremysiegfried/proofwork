@@ -1,5 +1,5 @@
-import JobsList from '@/components/JobsList'
 import { Suspense } from 'react'
+import JobsList from '@/components/JobsList'
 
 export const metadata = {
   title: 'Browse Jobs — ShowJob',
@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function JobsPage() {
   return (
-    <Suspense fallback={<div className="max-w-3xl mx-auto px-6 py-20 text-center text-pw-muted text-sm">Loading...</div>}>
+    <Suspense fallback={<div className="max-w-5xl mx-auto px-6 py-20 text-center text-pw-muted text-sm">Loading jobs...</div>}>
       <JobsList />
     </Suspense>
   )

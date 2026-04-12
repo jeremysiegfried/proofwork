@@ -22,6 +22,7 @@ var JOB_FIELDS = [
   { label: 'Healthcare', value: 'nurse,doctor,clinical,medical,healthcare,therapist' },
   { label: 'Education', value: 'teacher,lecturer,tutor,education,training' },
   { label: 'Customer', value: 'customer success,customer service,support manager,client' },
+  { label: 'E-commerce', value: 'ecommerce,e-commerce,shopify,magento,woocommerce,marketplace' },
 ]
 
 var EXP_LEVELS = [
@@ -62,23 +63,24 @@ function scoreRelevance(job, searchWords) {
   if (title.includes(fullQuery)) score += 100
 
   // Each matching word in title
+  var titleMatches = 0
   for (var i = 0; i < searchWords.length; i++) {
     var word = searchWords[i].toLowerCase()
     if (title.includes(word)) {
+      titleMatches++
       score += 20
       // Bonus if word appears at the start of the title
-      if (title.startsWith(word)) score += 5
+      if (title.startsWith(word)) score += 10
     }
-    // Company name match (lower priority)
-    if (companyName.includes(word)) score += 5
+    // Company name match (much lower priority)
+    if (companyName.includes(word)) score += 3
   }
 
   // Bonus: all search words found in title = strong match
-  var allMatch = true
-  for (var j = 0; j < searchWords.length; j++) {
-    if (!title.includes(searchWords[j].toLowerCase())) { allMatch = false; break }
-  }
-  if (allMatch) score += 50
+  if (titleMatches === searchWords.length && searchWords.length > 0) score += 50
+
+  // Penalty: no title matches at all (only matched on company name)
+  if (titleMatches === 0) score -= 50
 
   // Small trust score bonus as tiebreaker
   score += (job.trust_score || 0) / 100
@@ -112,6 +114,7 @@ export default function JobsList() {
   var [totalCount, setTotalCount] = s(0)
   var [searchTimeout, setSearchTimeout] = s(null)
   var [remoteFilter, setRemoteFilter] = s(initRemote)
+  var [didInitialFetch, setDidInitialFetch] = s(false)
 
   var fetchJobs = useCallback(function(pageNum, append) {
     if (pageNum === 0) setLoading(true)
@@ -125,15 +128,13 @@ export default function JobsList() {
       .select('*, companies!inner(*)', { count: 'exact' })
       .eq('active', true)
 
-    // Search — use OR to match title OR company name, then sort by relevance client-side
+    // Search — match on TITLE only for DB query, then score relevance client-side
     if (isSearching && searchWords.length > 0) {
-      // Build OR clauses: each word can appear in title OR company name
-      var orClauses = []
+      var titleClauses = []
       for (var w = 0; w < searchWords.length; w++) {
-        orClauses.push('title.ilike.%' + searchWords[w] + '%')
-        orClauses.push('companies.name.ilike.%' + searchWords[w] + '%')
+        titleClauses.push('title.ilike.%' + searchWords[w] + '%')
       }
-      q = q.or(orClauses.join(','))
+      q = q.or(titleClauses.join(','))
     }
 
     if (region === 'Remote') {
@@ -169,13 +170,10 @@ export default function JobsList() {
     }
 
     // When searching, fetch more results so we can sort by relevance client-side
-    // When not searching, use the selected sort
     if (isSearching) {
-      // Fetch a larger batch for relevance sorting
       q = q.order('trust_score', { ascending: false })
-      var fetchSize = PAGE_SIZE * 3 // fetch more so relevance sort has good candidates
-      var from = pageNum * PAGE_SIZE
-      q = q.range(0, fetchSize - 1) // always fetch from 0 for relevance sorting
+      var fetchSize = PAGE_SIZE * 5
+      q = q.range(0, fetchSize - 1)
     } else {
       if (sort === 'salary') q = q.order('salary_min', { ascending: false })
       else if (sort === 'recent') q = q.order('created_at', { ascending: false })
@@ -195,6 +193,8 @@ export default function JobsList() {
         data = data.map(function(job) {
           return { ...job, _relevance: scoreRelevance(job, searchWords) }
         })
+        // Filter out negative relevance (no title match at all)
+        data = data.filter(function(job) { return job._relevance > 0 })
         data.sort(function(a, b) { return b._relevance - a._relevance })
 
         // Paginate the sorted results
@@ -203,7 +203,7 @@ export default function JobsList() {
 
         if (append) setJobs(function(prev) { return prev.concat(paged) })
         else setJobs(paged)
-        setTotalCount(result.count || 0)
+        setTotalCount(data.length)
         setHasMore(start + PAGE_SIZE < data.length)
       } else {
         if (append) setJobs(function(prev) { return prev.concat(data) })
@@ -217,9 +217,25 @@ export default function JobsList() {
     })
   }, [query, region, sort, showVerifiedOnly, minSalary, jobField, expLevel, remoteFilter])
 
-  useEffect(function() { setPage(0); fetchJobs(0, false) }, [region, sort, showVerifiedOnly, minSalary, jobField, expLevel, remoteFilter])
-
+  // Initial fetch on mount - handles URL params
   useEffect(function() {
+    if (!didInitialFetch) {
+      setDidInitialFetch(true)
+      fetchJobs(0, false)
+    }
+  }, [fetchJobs, didInitialFetch])
+
+  // Re-fetch when filters change (not query - that's debounced separately)
+  useEffect(function() {
+    if (didInitialFetch) {
+      setPage(0)
+      fetchJobs(0, false)
+    }
+  }, [region, sort, showVerifiedOnly, minSalary, jobField, expLevel, remoteFilter])
+
+  // Debounced search on query change
+  useEffect(function() {
+    if (!didInitialFetch) return
     if (searchTimeout) clearTimeout(searchTimeout)
     var t = setTimeout(function() { setPage(0); fetchJobs(0, false) }, 400)
     setSearchTimeout(t)
@@ -238,7 +254,7 @@ export default function JobsList() {
       </p>
 
       <input value={query} onChange={function(e) { setQuery(e.target.value) }}
-        placeholder="Search by job title or company..."
+        placeholder="Search by job title..."
         className="w-full px-4 py-3 rounded-lg border border-pw-border bg-white text-sm text-pw-text1 mb-3" />
 
       <div className="flex justify-between items-center mb-3 gap-3 flex-wrap">
@@ -331,7 +347,8 @@ export default function JobsList() {
         <div className="text-center py-16"><div className="text-pw-muted text-sm">Loading jobs...</div></div>
       ) : jobs.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-pw-text2 mb-2">No jobs match your filters</p>
+          <p className="text-pw-text2 mb-2">No jobs match your search</p>
+          <p className="text-xs text-pw-muted mb-3">Try different keywords or broaden your filters</p>
           <button onClick={function() { setQuery(''); setRegion('All'); setShowVerifiedOnly(false); setMinSalary(0); setJobField(''); setExpLevel(''); setRemoteFilter('') }}
             className="text-pw-green text-sm hover:underline">Clear all filters</button>
         </div>
