@@ -424,7 +424,7 @@ export default async function JobDetailPage({ params }) {
               </>
             ) : (
               <>
-                {(job.source_url && job.source_url.startsWith('http') && !job.source_url.includes('adzuna.co.uk')) ? (
+                {(job.source_url && job.source_url.startsWith('http')) ? (
                   <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-pw-amber text-white font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-amber-500/20 transition-all">Apply on {company?.name || 'company'} site →</a>
                 ) : (company?.careers_url || company?.website) ? (
                   <a href={company?.careers_url || company?.website} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-pw-amber text-white font-extrabold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-amber-500/20 transition-all">Visit {company?.name || 'company'} careers →</a>
