@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 
 export default function Nav() {
-  const { user, profile, loading, signOut } = useAuth()
+  var { user, profile, loading, signOut } = useAuth()
 
   return (
     <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 border-b border-pw-border bg-white/90 backdrop-blur-md">
@@ -13,8 +13,14 @@ export default function Nav() {
         </Link>
         <div className="h-4 w-px bg-pw-border" />
         <Link href="/jobs" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">Jobs</Link>
-        {profile && (
-          <Link href="/dashboard" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">Dashboard</Link>
+        {user && (
+          <>
+            <Link href="/candidate" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">My CV</Link>
+            <Link href="/candidate/matches" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">Matches</Link>
+          </>
+        )}
+        {profile?.role === 'employer' && (
+          <Link href="/dashboard/employer" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">Dashboard</Link>
         )}
       </div>
       <div className="flex items-center gap-3">
@@ -24,11 +30,8 @@ export default function Nav() {
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <div className="text-xs font-semibold text-pw-text3">{profile?.full_name || user.email}</div>
-              <div className="text-[10px] text-pw-muted font-mono capitalize">{profile?.role || 'user'}</div>
+              <div className="text-[10px] text-pw-muted font-mono capitalize">{profile?.role || 'candidate'}</div>
             </div>
-            <Link href="/dashboard" className="px-3 py-1.5 rounded-md bg-pw-bg border border-pw-border text-xs font-semibold text-pw-text2 hover:text-pw-text1 transition-colors">
-              Dashboard
-            </Link>
             <button onClick={signOut} className="text-xs text-pw-muted hover:text-pw-text2 transition-colors">
               Sign out
             </button>
