@@ -13,6 +13,7 @@ export default function Nav() {
         </Link>
         <div className="h-4 w-px bg-pw-border" />
         <Link href="/jobs" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">Jobs</Link>
+        <Link href="/leaderboard" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">Rankings</Link>
         {user && (
           <>
             <Link href="/candidate" className="text-sm text-pw-text2 hover:text-pw-text1 transition-colors">My CV</Link>
