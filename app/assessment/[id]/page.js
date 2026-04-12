@@ -20,16 +20,77 @@ export default function AssessmentPage({ params }) {
   var [grading, setGrading] = useState(null)
   var timerRef = useRef(null)
 
+  // Verification follow-up state
+  var [verifyPhase, setVerifyPhase] = useState(false)
+  var [verifyQuestions, setVerifyQuestions] = useState([])
+  var [verifyAnswers, setVerifyAnswers] = useState({})
+  var [verifySubmitting, setVerifySubmitting] = useState(false)
+  var [verifyTimeLeft, setVerifyTimeLeft] = useState(null)
+  var verifyTimerRef = useRef(null)
+
+  // Behavioral tracking
+  var behaviorRef = useRef({
+    keystrokes: 0,
+    pasteCount: 0,
+    pastedChars: 0,
+    tabSwitches: 0,
+    focusLosses: 0,
+    largestPaste: 0,
+    typingBursts: [], // timestamps of typing activity
+    startedTypingAt: null,
+    lastKeystrokeAt: null,
+  })
+
+  // Track paste events
+  function handlePaste(e) {
+    var pastedText = e.clipboardData?.getData('text') || ''
+    var b = behaviorRef.current
+    b.pasteCount++
+    b.pastedChars += pastedText.length
+    if (pastedText.length > b.largestPaste) b.largestPaste = pastedText.length
+  }
+
+  // Track keystrokes
+  function handleKeyDown(e) {
+    var b = behaviorRef.current
+    // Don't count modifier keys, arrows, etc
+    if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Enter') {
+      b.keystrokes++
+      var now = Date.now()
+      if (!b.startedTypingAt) b.startedTypingAt = now
+      b.lastKeystrokeAt = now
+      // Record burst timestamps (sample every 5th keystroke)
+      if (b.keystrokes % 5 === 0) b.typingBursts.push(now)
+    }
+  }
+
+  // Track tab switches / focus loss
+  useEffect(function() {
+    function handleVisibility() {
+      if (document.hidden) {
+        behaviorRef.current.tabSwitches++
+      }
+    }
+    function handleBlur() {
+      behaviorRef.current.focusLosses++
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('blur', handleBlur)
+    return function() {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('blur', handleBlur)
+    }
+  }, [])
+
   useEffect(function() {
     if (authLoading) return
     if (!user) { router.push('/login'); return }
     loadData()
   }, [user, authLoading])
 
-  // Timer
+  // Main timer
   useEffect(function() {
     if (!attempt || attempt.status !== 'in_progress') return
-    
     function updateTimer() {
       var started = new Date(attempt.started_at)
       var limit = attempt.time_limit_minutes * 60 * 1000
@@ -37,14 +98,30 @@ export default function AssessmentPage({ params }) {
       var remaining = Math.max(0, limit - elapsed)
       setTimeLeft(remaining)
     }
-
     updateTimer()
     timerRef.current = setInterval(updateTimer, 1000)
     return function() { clearInterval(timerRef.current) }
   }, [attempt])
 
+  // Verification timer (3 minutes total for follow-ups)
+  useEffect(function() {
+    if (!verifyPhase) return
+    var verifyStart = Date.now()
+    var verifyLimit = 180000 // 3 minutes
+    function updateVerifyTimer() {
+      var remaining = Math.max(0, verifyLimit - (Date.now() - verifyStart))
+      setVerifyTimeLeft(remaining)
+      if (remaining <= 0) {
+        // Auto-submit if time runs out
+        submitVerification()
+      }
+    }
+    updateVerifyTimer()
+    verifyTimerRef.current = setInterval(updateVerifyTimer, 1000)
+    return function() { clearInterval(verifyTimerRef.current) }
+  }, [verifyPhase])
+
   async function loadData() {
-    // Load job
     var { data: jobData } = await supabase
       .from('jobs')
       .select('id, title, slug, companies(name)')
@@ -53,7 +130,6 @@ export default function AssessmentPage({ params }) {
 
     if (jobData) {
       setJob(jobData)
-      // Check for existing attempt
       var { data: existingAttempt } = await supabase
         .from('assessment_attempts')
         .select('*')
@@ -81,6 +157,12 @@ export default function AssessmentPage({ params }) {
       var data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to generate')
       setAttempt(data.attempt)
+      // Reset behavior tracking
+      behaviorRef.current = {
+        keystrokes: 0, pasteCount: 0, pastedChars: 0,
+        tabSwitches: 0, focusLosses: 0, largestPaste: 0,
+        typingBursts: [], startedTypingAt: null, lastKeystrokeAt: null,
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -93,19 +175,69 @@ export default function AssessmentPage({ params }) {
     setSubmitting(true)
     setError('')
     try {
+      var behavior = behaviorRef.current
       var res = await fetch('/api/assessment/grade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attemptId: attempt.id, responseText: response })
+        body: JSON.stringify({
+          attemptId: attempt.id,
+          responseText: response,
+          behavior: {
+            keystrokes: behavior.keystrokes,
+            pasteCount: behavior.pasteCount,
+            pastedChars: behavior.pastedChars,
+            largestPaste: behavior.largestPaste,
+            tabSwitches: behavior.tabSwitches,
+            focusLosses: behavior.focusLosses,
+            responseLength: response.length,
+            typingDurationMs: behavior.lastKeystrokeAt && behavior.startedTypingAt ? behavior.lastKeystrokeAt - behavior.startedTypingAt : 0,
+            typingBurstCount: behavior.typingBursts.length,
+          }
+        })
       })
       var data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Grading failed')
-      setAttempt(data.attempt)
-      setGrading(data.grading)
+
+      // If we got verification questions, show them
+      if (data.verifyQuestions && data.verifyQuestions.length > 0) {
+        setGrading(data.grading)
+        setVerifyQuestions(data.verifyQuestions)
+        setVerifyPhase(true)
+      } else {
+        setAttempt(data.attempt)
+        setGrading(data.grading)
+      }
     } catch (err) {
       setError(err.message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function submitVerification() {
+    if (verifySubmitting) return
+    setVerifySubmitting(true)
+    setError('')
+    clearInterval(verifyTimerRef.current)
+    try {
+      var res = await fetch('/api/assessment/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attemptId: attempt.id,
+          answers: verifyAnswers,
+          timeSpent: verifyTimeLeft !== null ? 180 - Math.floor(verifyTimeLeft / 1000) : 180,
+        })
+      })
+      var data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Verification failed')
+      setAttempt(data.attempt)
+      setGrading(data.grading)
+      setVerifyPhase(false)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setVerifySubmitting(false)
     }
   }
 
@@ -150,9 +282,69 @@ export default function AssessmentPage({ params }) {
     )
   }
 
-  // Graded state
+  // VERIFICATION PHASE - quick follow-up questions
+  if (verifyPhase && verifyQuestions.length > 0) {
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-6">
+        <div className="sticky top-[49px] z-40 flex items-center justify-between px-4 py-2 rounded-lg mb-4 border bg-pw-amberDark border-pw-amber/20">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-pw-amberText">Verification round</span>
+            <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-pw-bg text-pw-muted border border-pw-border">Quick-fire questions</span>
+          </div>
+          <span className={'font-mono text-sm font-bold ' + (verifyTimeLeft < 30000 ? 'text-red-500' : 'text-pw-amber')}>
+            {formatTime(verifyTimeLeft)}
+          </span>
+        </div>
+
+        <div className="bg-pw-card border border-pw-border rounded-xl p-5 mb-4">
+          <div className="text-[10px] font-mono text-pw-amber uppercase tracking-wider mb-2">Why this step?</div>
+          <p className="text-sm text-pw-text2 leading-relaxed">
+            To verify your understanding, answer these quick questions about YOUR solution. These are timed and specific to what you wrote. Be concise — a few sentences each.
+          </p>
+        </div>
+
+        {error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">{error}</div>}
+
+        {verifyQuestions.map(function(q, i) {
+          return (
+            <div key={i} className="bg-pw-card border border-pw-border rounded-xl p-5 mb-3">
+              <div className="text-[10px] font-mono text-pw-green uppercase tracking-wider mb-2">Question {i + 1} of {verifyQuestions.length}</div>
+              <p className="text-sm text-pw-text1 font-semibold mb-3">{q}</p>
+              <textarea
+                value={verifyAnswers[i] || ''}
+                onChange={function(e) {
+                  setVerifyAnswers(function(prev) { var n = { ...prev }; n[i] = e.target.value; return n })
+                }}
+                placeholder="Your answer..."
+                rows={3}
+                className="w-full px-3 py-2.5 rounded-md border border-pw-border bg-pw-bg text-sm text-pw-text1 resize-y"
+                onPaste={function(e) { e.preventDefault() }}
+              />
+            </div>
+          )
+        })}
+
+        <button
+          onClick={submitVerification}
+          disabled={verifySubmitting}
+          className={'w-full py-4 rounded-xl font-extrabold text-sm transition-all ' + (verifySubmitting ? 'bg-pw-border text-pw-muted' : 'bg-pw-green text-white hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20')}
+        >
+          {verifySubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              Verifying...
+            </span>
+          ) : 'Submit verification'}
+        </button>
+      </div>
+    )
+  }
+
+  // GRADED STATE - show results
   if (attempt && attempt.status === 'graded') {
     var score = attempt.score || 0
+    var aiFlag = attempt.challenge_data?.ai_probability
+
     return (
       <div className="max-w-2xl mx-auto px-6 py-8">
         <Link href={'/jobs/' + job.slug} className="text-xs text-pw-muted hover:text-pw-text2 transition-colors mb-4 inline-block">← {job.title}</Link>
@@ -164,6 +356,14 @@ export default function AssessmentPage({ params }) {
           <h1 className="font-display text-2xl font-black tracking-tight">{getScoreLabel(score)}</h1>
           <p className="text-sm text-pw-text2 mt-1">{job.title} at {job.companies?.name}</p>
         </div>
+
+        {aiFlag && aiFlag === 'high' && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+            <div className="text-xs text-red-600 leading-relaxed">
+              <strong>AI-assisted response detected.</strong> Our system flagged behavioral patterns suggesting significant AI assistance. This has been factored into your score. Employers can see this flag.
+            </div>
+          </div>
+        )}
 
         <div className="bg-pw-card border border-pw-border rounded-xl p-5 mb-4">
           <p className="text-sm text-pw-text3 leading-relaxed mb-4">{attempt.feedback || grading?.feedback}</p>
@@ -187,25 +387,6 @@ export default function AssessmentPage({ params }) {
           )}
         </div>
 
-        {grading?.criteria && (
-          <div className="bg-pw-card border border-pw-border rounded-xl p-5 mb-4">
-            <div className="text-[10px] font-mono text-pw-muted uppercase tracking-wider mb-3">Score breakdown</div>
-            {Object.entries(grading.criteria).map(function(entry) {
-              var label = entry[0].charAt(0).toUpperCase() + entry[0].slice(1)
-              var val = entry[1]
-              return (
-                <div key={entry[0]} className="flex items-center gap-3 py-1.5">
-                  <span className="text-xs text-pw-text3 w-28">{label}</span>
-                  <div className="flex-1 h-2 rounded-full bg-pw-border overflow-hidden">
-                    <div className="h-full rounded-full bg-pw-green transition-all" style={{ width: (val / 25 * 100) + '%' }} />
-                  </div>
-                  <span className="text-xs font-mono text-pw-text1 w-10 text-right">{val}/25</span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
         <div className="flex gap-3">
           <Link href={'/jobs/' + job.slug} className="flex-1 py-3 rounded-lg bg-pw-green text-white font-bold text-sm text-center hover:translate-y-[-1px] hover:shadow-lg hover:shadow-pw-green/20 transition-all">
             Back to job →
@@ -218,12 +399,11 @@ export default function AssessmentPage({ params }) {
     )
   }
 
-  // In-progress state
+  // IN-PROGRESS STATE - taking the assessment
   if (attempt && attempt.status === 'in_progress') {
     var isOvertime = timeLeft !== null && timeLeft <= 0
     return (
       <div className="max-w-3xl mx-auto px-6 py-6">
-        {/* Sticky timer bar */}
         <div className={'sticky top-[49px] z-40 flex items-center justify-between px-4 py-2 rounded-lg mb-4 border ' + (isOvertime ? 'bg-red-50 border-red-200' : timeLeft < 300000 ? 'bg-pw-amberDark border-pw-amber/20' : 'bg-pw-card border-pw-border')}>
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-pw-text1">{job.title}</span>
@@ -247,26 +427,29 @@ export default function AssessmentPage({ params }) {
 
         {error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs">{error}</div>}
 
-        {/* Challenge */}
         <div className="bg-pw-card border border-pw-border rounded-xl p-5 mb-4">
           <div className="text-[10px] font-mono text-pw-green uppercase tracking-wider mb-3">Your challenge</div>
           <div className="prose prose-sm max-w-none text-pw-text3 leading-relaxed job-desc" dangerouslySetInnerHTML={{ __html: formatChallenge(attempt.challenge_text) }} />
         </div>
 
-        {/* Response area */}
         <div className="bg-pw-card border border-pw-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="text-[10px] font-mono text-pw-green uppercase tracking-wider">Your response</div>
-            <div className="text-[10px] font-mono text-pw-muted">{response.length.toLocaleString()} characters</div>
+            <div className="text-[10px] font-mono text-pw-muted">{response.length.toLocaleString()} chars</div>
           </div>
           <textarea
             value={response}
             onChange={function(e) { setResponse(e.target.value) }}
+            onPaste={handlePaste}
+            onKeyDown={handleKeyDown}
             placeholder="Write your answer here... Take your time, be thorough, and show your working."
             rows={20}
             className="w-full px-4 py-3 rounded-lg border border-pw-border bg-pw-bg text-sm text-pw-text1 resize-y font-mono text-xs leading-relaxed"
             autoFocus
           />
+          <div className="mt-2 text-[9px] font-mono text-pw-muted">
+            Your typing patterns are monitored to verify authenticity. Write in your own words.
+          </div>
         </div>
 
         <div className="mt-4">
@@ -282,15 +465,12 @@ export default function AssessmentPage({ params }) {
               </span>
             ) : 'Submit for grading'}
           </button>
-          <div className="text-center text-[10px] text-pw-muted mt-2">
-            Your response will be graded by AI. You cannot edit after submission.
-          </div>
         </div>
       </div>
     )
   }
 
-  // Start state
+  // START STATE
   return (
     <div className="max-w-xl mx-auto px-6 py-8">
       <Link href={'/jobs/' + job.slug} className="text-xs text-pw-muted hover:text-pw-text2 transition-colors mb-4 inline-block">← {job.title}</Link>
@@ -308,8 +488,8 @@ export default function AssessmentPage({ params }) {
         <div className="flex flex-col gap-3 text-sm text-pw-text3">
           <div className="flex gap-3"><span className="text-pw-green font-bold shrink-0">1.</span> AI generates a challenge tailored to this role</div>
           <div className="flex gap-3"><span className="text-pw-green font-bold shrink-0">2.</span> You have a set time limit to write your response</div>
-          <div className="flex gap-3"><span className="text-pw-green font-bold shrink-0">3.</span> AI grades your submission and gives a score (0-100)</div>
-          <div className="flex gap-3"><span className="text-pw-green font-bold shrink-0">4.</span> Your verified score appears on your applications</div>
+          <div className="flex gap-3"><span className="text-pw-green font-bold shrink-0">3.</span> After submitting, you answer quick verification questions about your solution</div>
+          <div className="flex gap-3"><span className="text-pw-green font-bold shrink-0">4.</span> AI grades everything and gives a verified score (0-100)</div>
         </div>
       </div>
 
@@ -318,8 +498,9 @@ export default function AssessmentPage({ params }) {
         <div className="flex flex-col gap-2 text-xs text-pw-text2">
           <div className="flex gap-2"><span className="text-pw-amber">⚠</span> The timer starts once you click "Start". You can't pause it.</div>
           <div className="flex gap-2"><span className="text-pw-amber">⚠</span> You get one attempt per job.</div>
-          <div className="flex gap-2"><span className="text-pw-green">✓</span> You can use any resources — this isn't a memory test.</div>
-          <div className="flex gap-2"><span className="text-pw-green">✓</span> Quality over speed. A thoughtful answer beats a rushed one.</div>
+          <div className="flex gap-2"><span className="text-red-500">⚠</span> AI-generated responses are detected and penalised. Write your own answer.</div>
+          <div className="flex gap-2"><span className="text-red-500">⚠</span> After submitting, you'll face quick-fire verification questions about YOUR solution.</div>
+          <div className="flex gap-2"><span className="text-pw-green">✓</span> You can reference docs — this tests understanding, not memorisation.</div>
         </div>
       </div>
 
