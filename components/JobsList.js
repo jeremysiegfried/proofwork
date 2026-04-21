@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import JobCard from './JobCard'
 import JobAlertBanner from './JobAlertBanner'
 import { supabase } from '@/lib/supabase'
+import { expandSearch } from '@/lib/synonyms'
 
 // UK city coordinates for distance calculation
 var CITY_COORDS = {
@@ -283,10 +284,16 @@ export default function JobsList() {
       .eq('active', true)
 
     if (isSearching && searchWords.length > 0) {
+      // Expand search with synonyms for better results
+      var expanded = expandSearch(query.trim())
       var titleClauses = []
-      for (var w = 0; w < searchWords.length; w++) {
-        titleClauses.push('title.ilike.%' + searchWords[w] + '%')
-        titleClauses.push('description.ilike.%' + searchWords[w] + '%')
+      for (var w = 0; w < expanded.length; w++) {
+        titleClauses.push('title.ilike.%' + expanded[w] + '%')
+        titleClauses.push('description.ilike.%' + expanded[w] + '%')
+      }
+      // Also add original words in case synonyms don't cover them
+      for (var w2 = 0; w2 < searchWords.length; w2++) {
+        titleClauses.push('title.ilike.%' + searchWords[w2] + '%')
       }
       q = q.or(titleClauses.join(','))
     }
