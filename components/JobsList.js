@@ -194,21 +194,55 @@ export default function JobsList() {
   var [postcodeError, setPostcodeError] = s('')
   var [postcodeLoading, setPostcodeLoading] = s(false)
 
-  // Lookup postcode
-  async function lookupPostcode(pc) {
-    if (!pc || pc.trim().length < 3) { setPostcodeCoords(null); setPostcodeError(''); return }
+  // Smart location lookup - handles postcodes, cities, and towns
+  async function lookupLocation(input) {
+    if (!input || input.trim().length < 2) { setPostcodeCoords(null); setPostcodeError(''); return }
     setPostcodeLoading(true)
     setPostcodeError('')
+
+    var clean = input.trim()
+
     try {
-      var clean = pc.trim().replace(/\s+/g, '').toUpperCase()
-      var res = await fetch('https://api.postcodes.io/postcodes/' + clean)
-      var data = await res.json()
-      if (data.result) {
-        setPostcodeCoords({ lat: data.result.latitude, lng: data.result.longitude, name: data.result.admin_district || pc })
-      } else {
-        setPostcodeError('Postcode not found')
-        setPostcodeCoords(null)
+      // Check if it looks like a UK postcode (has digits)
+      var isPostcode = /\d/.test(clean)
+
+      if (isPostcode) {
+        // Try postcode lookup
+        var pcClean = clean.replace(/\s+/g, '').toUpperCase()
+        var res = await fetch('https://api.postcodes.io/postcodes/' + pcClean)
+        var data = await res.json()
+        if (data.result) {
+          setPostcodeCoords({ lat: data.result.latitude, lng: data.result.longitude, name: data.result.admin_district || clean })
+          // Auto-set distance if not set
+          if (distance === 0) setDistance(25)
+          setPostcodeLoading(false)
+          return
+        }
       }
+
+      // Try our built-in city coordinates first (instant)
+      var cityCoords = getCityCoords(clean)
+      if (cityCoords) {
+        setPostcodeCoords({ lat: cityCoords.lat, lng: cityCoords.lng, name: clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase() })
+        if (distance === 0) setDistance(25)
+        setPostcodeLoading(false)
+        return
+      }
+
+      // Try postcodes.io places search (handles towns, villages, areas)
+      var placesRes = await fetch('https://api.postcodes.io/places?q=' + encodeURIComponent(clean) + '&limit=1')
+      var placesData = await placesRes.json()
+      if (placesData.result && placesData.result.length > 0) {
+        var place = placesData.result[0]
+        setPostcodeCoords({ lat: place.latitude, lng: place.longitude, name: place.name_1 || clean })
+        if (distance === 0) setDistance(25)
+        setPostcodeLoading(false)
+        return
+      }
+
+      // Nothing found
+      setPostcodeError('Location not found — try a postcode')
+      setPostcodeCoords(null)
     } catch (err) {
       setPostcodeError('Lookup failed')
       setPostcodeCoords(null)
@@ -264,7 +298,7 @@ export default function JobsList() {
       q = q.or(expClauses)
     }
 
-    if (isSearching || (postcodeCoords && distance > 0)) {
+    if (isSearching || (postcodeCoords && distance > 0) || sort === 'nearest') {
       q = q.order('trust_score', { ascending: false })
       var fetchSize = PAGE_SIZE * 5
       q = q.range(0, fetchSize - 1)
@@ -280,31 +314,50 @@ export default function JobsList() {
       if (result.error) { setLoading(false); setLoadingMore(false); return }
       var data = result.data || []
 
-      // Distance filtering (client-side)
-      if (postcodeCoords && distance > 0) {
-        data = data.filter(function(job) {
-          if (job.remote_policy === 'Remote') return true
+      // Distance calculation (client-side) - always calculate if we have coords
+      if (postcodeCoords) {
+        data = data.map(function(job) {
+          if (job.remote_policy === 'Remote') { job._distance = 0; return job }
           var jobCoords = getCityCoords(job.location)
-          if (!jobCoords) return true // Include if we can't determine location
-          var dist = haversine(postcodeCoords.lat, postcodeCoords.lng, jobCoords.lat, jobCoords.lng)
-          job._distance = Math.round(dist)
-          return dist <= distance
+          if (jobCoords) {
+            job._distance = Math.round(haversine(postcodeCoords.lat, postcodeCoords.lng, jobCoords.lat, jobCoords.lng))
+          } else {
+            job._distance = 999
+          }
+          return job
         })
+
+        // Filter by distance if set
+        if (distance > 0) {
+          data = data.filter(function(job) {
+            return job.remote_policy === 'Remote' || job._distance <= distance
+          })
+        }
       }
 
+      // Apply sort
       if (isSearching && searchWords.length > 0) {
         data = data.map(function(job) { return { ...job, _relevance: scoreRelevance(job, searchWords) } })
         data = data.filter(function(job) { return job._relevance > 0 })
-        data.sort(function(a, b) { return b._relevance - a._relevance })
-        var start = pageNum * PAGE_SIZE
-        var paged = data.slice(start, start + PAGE_SIZE)
-        if (append) setJobs(function(prev) { return prev.concat(paged) })
-        else setJobs(paged)
-        setTotalCount(data.length)
-        setHasMore(start + PAGE_SIZE < data.length)
-      } else if (postcodeCoords && distance > 0) {
-        // Sort by distance
-        data.sort(function(a, b) { return (a._distance || 999) - (b._distance || 999) })
+        if (sort === 'salary') {
+          data.sort(function(a, b) { return (b.salary_min || 0) - (a.salary_min || 0) })
+        } else if (sort === 'nearest' && postcodeCoords) {
+          data.sort(function(a, b) { return (a._distance || 999) - (b._distance || 999) })
+        } else {
+          data.sort(function(a, b) { return b._relevance - a._relevance })
+        }
+      } else if (postcodeCoords) {
+        if (sort === 'salary') {
+          data.sort(function(a, b) { return (b.salary_min || 0) - (a.salary_min || 0) })
+        } else if (sort === 'nearest') {
+          data.sort(function(a, b) { return (a._distance || 999) - (b._distance || 999) })
+        } else {
+          data.sort(function(a, b) { return (a._distance || 999) - (b._distance || 999) })
+        }
+      }
+
+      // Paginate client-side for filtered/sorted results
+      if (isSearching || postcodeCoords || sort === 'nearest') {
         var start = pageNum * PAGE_SIZE
         var paged = data.slice(start, start + PAGE_SIZE)
         if (append) setJobs(function(prev) { return prev.concat(paged) })
@@ -364,10 +417,10 @@ export default function JobsList() {
           <label className="text-[10px] font-mono text-pw-muted uppercase tracking-wider mb-1 block">Where</label>
           <div className="flex gap-1">
             <input value={postcode} onChange={function(e) { setPostcode(e.target.value) }}
-              placeholder="City or postcode"
-              onKeyDown={function(e) { if (e.key === 'Enter') { e.preventDefault(); lookupPostcode(postcode) } }}
+              placeholder="City, town, or postcode"
+              onKeyDown={function(e) { if (e.key === 'Enter') { e.preventDefault(); lookupLocation(postcode) } }}
               className="flex-1 px-4 py-3 rounded-lg border border-pw-border bg-white text-sm text-pw-text1" />
-            <button onClick={function() { lookupPostcode(postcode) }}
+            <button onClick={function() { lookupLocation(postcode) }}
               disabled={postcodeLoading || !postcode.trim()}
               className={'px-3 py-3 rounded-lg text-sm font-bold transition-all ' + (postcodeCoords ? 'bg-pw-greenDark text-pw-green border border-pw-green/20' : 'bg-white text-pw-muted border border-pw-border hover:text-pw-green')}>
               {postcodeLoading ? '...' : postcodeCoords ? '✓' : '→'}
@@ -378,7 +431,7 @@ export default function JobsList() {
         </div>
         <div className="sm:w-28">
           <label className="text-[10px] font-mono text-pw-muted uppercase tracking-wider mb-1 block">Distance</label>
-          <select value={distance} onChange={function(e) { setDistance(parseInt(e.target.value)); if (parseInt(e.target.value) > 0 && !postcodeCoords && postcode) lookupPostcode(postcode) }}
+          <select value={distance} onChange={function(e) { setDistance(parseInt(e.target.value)); if (parseInt(e.target.value) > 0 && !postcodeCoords && postcode) lookupLocation(postcode) }}
             className="w-full px-3 py-3 rounded-lg border border-pw-border bg-white text-sm text-pw-text1 appearance-none">
             {DISTANCE_OPTIONS.map(function(o) { return <option key={o.value} value={o.value}>{o.label}</option> })}
           </select>
@@ -396,7 +449,7 @@ export default function JobsList() {
           })}
         </div>
         <div className="flex gap-1">
-          {[{key:'trust',label:'Score'},{key:'salary',label:'Salary'},{key:'recent',label:'Newest'}].map(function(s2) {
+          {[{key:'trust',label:'Score'},{key:'salary',label:'Highest paid'},{key:'nearest',label:'Nearest'},{key:'recent',label:'Newest'}].map(function(s2) {
             return <button key={s2.key} onClick={function() { setSort(s2.key) }}
               className={'px-2.5 py-1 rounded text-[10px] font-semibold font-mono transition-all ' +
                 (sort === s2.key ? 'bg-pw-border text-pw-text1' : 'text-pw-muted hover:text-pw-text2')
