@@ -213,8 +213,8 @@ export default function JobsList() {
         var data = await res.json()
         if (data.result) {
           setPostcodeCoords({ lat: data.result.latitude, lng: data.result.longitude, name: data.result.admin_district || clean })
-          // Auto-set distance if not set
           if (distance === 0) setDistance(25)
+          setRegion('All')
           setPostcodeLoading(false)
           return
         }
@@ -225,6 +225,7 @@ export default function JobsList() {
       if (cityCoords) {
         setPostcodeCoords({ lat: cityCoords.lat, lng: cityCoords.lng, name: clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase() })
         if (distance === 0) setDistance(25)
+        setRegion('All')
         setPostcodeLoading(false)
         return
       }
@@ -236,6 +237,7 @@ export default function JobsList() {
         var place = placesData.result[0]
         setPostcodeCoords({ lat: place.latitude, lng: place.longitude, name: place.name_1 || clean })
         if (distance === 0) setDistance(25)
+        setRegion('All')
         setPostcodeLoading(false)
         return
       }
@@ -277,6 +279,24 @@ export default function JobsList() {
       q = q.ilike('location', '%' + region + '%')
     }
 
+    // When location search is active, also filter by nearby city names in DB
+    if (postcodeCoords && postcodeCoords.name && region === 'All') {
+      // Find all cities within the distance radius to build a DB filter
+      var nearbyCities = []
+      for (var city in CITY_COORDS) {
+        var c = CITY_COORDS[city]
+        var dist = haversine(postcodeCoords.lat, postcodeCoords.lng, c.lat, c.lng)
+        var maxDist = distance > 0 ? distance : 50
+        if (dist <= maxDist) nearbyCities.push(city)
+      }
+      if (nearbyCities.length > 0 && nearbyCities.length < 20) {
+        var locationClauses = nearbyCities.map(function(c) { return 'location.ilike.%' + c + '%' })
+        // Also include remote jobs
+        locationClauses.push('remote_policy.eq.Remote')
+        q = q.or(locationClauses.join(','))
+      }
+    }
+
     if (remoteFilter) {
       if (remoteFilter === 'Remote') q = q.ilike('remote_policy', '%Remote%')
       else if (remoteFilter === 'Hybrid') q = q.eq('remote_policy', 'Hybrid')
@@ -300,7 +320,7 @@ export default function JobsList() {
 
     if (isSearching || (postcodeCoords && distance > 0) || sort === 'nearest') {
       q = q.order('trust_score', { ascending: false })
-      var fetchSize = PAGE_SIZE * 5
+      var fetchSize = postcodeCoords ? PAGE_SIZE * 10 : PAGE_SIZE * 5
       q = q.range(0, fetchSize - 1)
     } else {
       if (sort === 'salary') q = q.order('salary_min', { ascending: false })
