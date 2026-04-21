@@ -1,8 +1,9 @@
-name: Weekly Job Sync
+name: Daily Job Sync
 
 on:
   schedule:
-    - cron: '0 6 * * 1'
+    # Runs every night at 2am UTC
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -26,7 +27,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
           ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
-        run: node scripts/weekly-sync.mjs
+        run: node scripts/daily-sync.mjs
 
       - name: Fix URL formats
         env:
@@ -34,9 +35,22 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: node scripts/fix-url-format.mjs --fix
 
-      - name: Send weekly job alerts
+      - name: Send daily job alerts
+        continue-on-error: true
         run: |
           curl -s -X POST "${{ secrets.SITE_URL }}/api/send-alerts" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{"frequency":"weekly"}'
+            -d '{"frequency":"daily"}'
+
+      - name: Send weekly alerts (Mondays only)
+        if: github.event.schedule == '0 2 * * 1' || false
+        continue-on-error: true
+        run: |
+          DAY=$(date +%u)
+          if [ "$DAY" = "1" ]; then
+            curl -s -X POST "${{ secrets.SITE_URL }}/api/send-alerts" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -d '{"frequency":"weekly"}'
+          fi

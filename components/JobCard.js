@@ -14,15 +14,28 @@ function getLevel(title) {
   return null
 }
 
+function timeAgo(date) {
+  if (!date) return ''
+  var now = new Date()
+  var posted = new Date(date)
+  var diff = Math.floor((now - posted) / (1000 * 60 * 60 * 24))
+  if (diff === 0) return 'Today'
+  if (diff === 1) return '1d ago'
+  if (diff < 7) return diff + 'd ago'
+  if (diff < 14) return '1w ago'
+  if (diff < 30) return Math.floor(diff / 7) + 'w ago'
+  return Math.floor(diff / 30) + 'mo ago'
+}
+
 export default function JobCard({ job, company }) {
   var router = useRouter()
   var hasSalary = job.salary_min > 0
   var claimed = company ? company.claimed : false
   var isEstimate = hasSalary && job.salary_min === job.salary_max
   var level = getLevel(job.title)
+  var posted = timeAgo(job.posted_at || job.created_at)
 
   function handleCardClick(e) {
-    // Don't navigate if clicking the company link
     if (e.target.closest('[data-company-link]')) return
     router.push('/jobs/' + job.slug)
   }
@@ -56,9 +69,10 @@ export default function JobCard({ job, company }) {
               <span className="text-pw-muted"> · {job.remote_policy}</span>
             )}
             <span className="text-pw-muted"> · {job.job_type || 'Full-time'}</span>
+            {posted && <span className="text-pw-muted"> · {posted}</span>}
           </div>
 
-          {/* Salary */}
+          {/* Salary + badges */}
           <div className="flex items-center gap-2 flex-wrap mb-2">
             {hasSalary && !isEstimate ? (
               <span className="font-mono text-sm font-bold text-pw-green">
@@ -74,8 +88,11 @@ export default function JobCard({ job, company }) {
             {level && (
               <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">{level}</span>
             )}
-            {job.has_challenge && (
-              <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-pw-greenDark text-pw-greenText font-bold border border-pw-green/20">⚡ CHALLENGE</span>
+            {job._distance > 0 && job._distance < 999 && (
+              <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">{job._distance} mi</span>
+            )}
+            {job.has_challenge && claimed && (
+              <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-pw-greenDark text-pw-greenText font-bold border border-pw-green/20">⚡ ASSESSMENT</span>
             )}
           </div>
 
