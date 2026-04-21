@@ -165,7 +165,8 @@ export default function JobsList() {
   var s = useState
 
   var initQuery = searchParams.get('q') || ''
-  var initRegion = searchParams.get('region') || 'All'
+  var initLocation = searchParams.get('location') || ''
+  var initRegion = searchParams.get('region') || (initLocation || 'All')
   var initSalary = parseInt(searchParams.get('salary') || '0') || 0
   var initRemote = searchParams.get('remote') || ''
 
@@ -188,7 +189,7 @@ export default function JobsList() {
   var [didInitialFetch, setDidInitialFetch] = s(false)
   
   // Location search
-  var [postcode, setPostcode] = s('')
+  var [postcode, setPostcode] = s(initLocation)
   var [distance, setDistance] = s(0)
   var [postcodeCoords, setPostcodeCoords] = s(null)
   var [postcodeError, setPostcodeError] = s('')
