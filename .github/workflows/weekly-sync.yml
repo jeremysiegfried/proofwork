@@ -2,10 +2,8 @@ name: Weekly Job Sync
 
 on:
   schedule:
-    # Runs every Monday at 6am UTC
     - cron: '0 6 * * 1'
   workflow_dispatch:
-    # Also allows manual trigger from GitHub Actions tab
 
 jobs:
   sync-jobs:
@@ -35,3 +33,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: node scripts/fix-url-format.mjs --fix
+
+      - name: Send weekly job alerts
+        run: |
+          curl -s -X POST "${{ secrets.SITE_URL }}/api/send-alerts" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -d '{"frequency":"weekly"}'
