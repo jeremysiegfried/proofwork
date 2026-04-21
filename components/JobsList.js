@@ -215,7 +215,19 @@ export default function JobsList() {
         if (data.result) {
           setPostcodeCoords({ lat: data.result.latitude, lng: data.result.longitude, name: data.result.admin_district || clean })
           if (distance === 0) setDistance(25)
-          setRegion('All')
+          // Find nearest major city to filter DB
+          var nearest = null
+          var nearestDist = 999
+          for (var city in CITY_COORDS) {
+            var c = CITY_COORDS[city]
+            var d = haversine(data.result.latitude, data.result.longitude, c.lat, c.lng)
+            if (d < nearestDist) { nearestDist = d; nearest = city }
+          }
+          if (nearest) {
+            setRegion(nearest.charAt(0).toUpperCase() + nearest.slice(1))
+          } else {
+            setRegion('All')
+          }
           setPostcodeLoading(false)
           return
         }
@@ -274,6 +286,7 @@ export default function JobsList() {
       var titleClauses = []
       for (var w = 0; w < searchWords.length; w++) {
         titleClauses.push('title.ilike.%' + searchWords[w] + '%')
+        titleClauses.push('description.ilike.%' + searchWords[w] + '%')
       }
       q = q.or(titleClauses.join(','))
     }
@@ -306,8 +319,9 @@ export default function JobsList() {
     }
 
     if (isSearching || (postcodeCoords && distance > 0) || sort === 'nearest') {
-      q = q.order('trust_score', { ascending: false })
-      var fetchSize = postcodeCoords ? PAGE_SIZE * 10 : PAGE_SIZE * 5
+      if (sort === 'salary') q = q.order('salary_min', { ascending: false })
+      else q = q.order('trust_score', { ascending: false })
+      var fetchSize = postcodeCoords ? PAGE_SIZE * 15 : PAGE_SIZE * 8
       q = q.range(0, fetchSize - 1)
     } else {
       if (sort === 'salary') q = q.order('salary_min', { ascending: false })
