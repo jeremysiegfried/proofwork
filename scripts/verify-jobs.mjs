@@ -1,5 +1,6 @@
-// Verify ALL jobs still exist on Adzuna and deactivate dead ones
-// Works locally and in GitHub Actions
+// Verify jobs still exist on Adzuna and deactivate dead ones
+// Default: checks 1000 oldest jobs (for daily GitHub Actions)
+// Full run: node scripts/verify-jobs.mjs --all
 // Run: node scripts/verify-jobs.mjs
 
 import { createClient } from '@supabase/supabase-js'
@@ -22,8 +23,10 @@ if (!SUPABASE_KEY) SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
+var CHECK_ALL = process.argv.includes('--all')
+var DAILY_LIMIT = 1000
+
 async function verifyBatch(jobs) {
-  // Verify multiple jobs by searching for their titles
   var deadIds = []
 
   for (var i = 0; i < jobs.length; i++) {
@@ -36,7 +39,6 @@ async function verifyBatch(jobs) {
 
     if (!adzunaId) continue
 
-    // Search Adzuna for this specific job by title + company
     var query = encodeURIComponent(job.title.substring(0, 50))
     var url = 'https://api.adzuna.com/v1/api/jobs/gb/search/1?app_id=' + ADZUNA_ID
       + '&app_key=' + ADZUNA_KEY
@@ -47,10 +49,9 @@ async function verifyBatch(jobs) {
     try {
       var res = await fetch(url)
       if (res.status === 429) {
-        // Rate limited - wait and retry
         process.stdout.write(' [rate limit, waiting 30s]')
         await new Promise(function(r) { setTimeout(r, 30000) })
-        i-- // Retry this job
+        i--
         continue
       }
       if (!res.ok) continue
@@ -58,11 +59,9 @@ async function verifyBatch(jobs) {
       var data = await res.json()
       
       if (!data.results || data.results.length === 0) {
-        // No results at all - job likely dead
         deadIds.push(job.id)
         process.stdout.write('✗')
       } else {
-        // Check if our specific job ID is in results or company matches
         var found = false
         var companyLower = (job.companies?.name || '').toLowerCase()
         
@@ -80,9 +79,6 @@ async function verifyBatch(jobs) {
         if (found) {
           process.stdout.write('✓')
         } else {
-          // Title search returned results but none match our company
-          // Could be expired or could be search mismatch - mark as suspicious
-          // Only deactivate if job is older than 14 days
           var age = Math.floor((Date.now() - new Date(job.posted_at || job.created_at)) / (1000*60*60*24))
           if (age > 14) {
             deadIds.push(job.id)
@@ -104,10 +100,10 @@ async function verifyBatch(jobs) {
 
 async function main() {
   var startTime = Date.now()
-  console.log('=== VERIFY ALL JOBS ===')
+  console.log('=== VERIFY JOBS ===')
+  console.log('Mode: ' + (CHECK_ALL ? 'ALL JOBS' : 'Daily (' + DAILY_LIMIT + ' oldest)'))
   console.log('Started: ' + new Date().toISOString() + '\n')
 
-  // Get all active jobs
   var allJobs = []
   var offset = 0
   while (true) {
@@ -123,15 +119,19 @@ async function main() {
     if (data.length < 1000) break
   }
 
+  // Daily mode: only check oldest 1000
+  var jobsToCheck = CHECK_ALL ? allJobs : allJobs.slice(0, DAILY_LIMIT)
+
   console.log('Total active Adzuna jobs: ' + allJobs.length)
-  console.log('Estimated time: ~' + Math.round(allJobs.length * 0.4 / 60) + ' minutes\n')
+  console.log('Checking: ' + jobsToCheck.length)
+  console.log('Estimated time: ~' + Math.round(jobsToCheck.length * 0.4 / 60) + ' minutes\n')
 
   var totalDead = 0
   var batchSize = 100
 
-  for (var b = 0; b < allJobs.length; b += batchSize) {
-    var batch = allJobs.slice(b, b + batchSize)
-    process.stdout.write('[' + (b + 1) + '-' + Math.min(b + batchSize, allJobs.length) + '/' + allJobs.length + '] ')
+  for (var b = 0; b < jobsToCheck.length; b += batchSize) {
+    var batch = jobsToCheck.slice(b, b + batchSize)
+    process.stdout.write('[' + (b + 1) + '-' + Math.min(b + batchSize, jobsToCheck.length) + '/' + jobsToCheck.length + '] ')
 
     var deadIds = await verifyBatch(batch)
 
