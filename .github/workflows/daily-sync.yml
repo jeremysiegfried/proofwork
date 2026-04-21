@@ -2,13 +2,13 @@ name: Daily Job Sync
 
 on:
   schedule:
-    # Runs every night at 2am UTC
     - cron: '0 2 * * *'
   workflow_dispatch:
 
 jobs:
   sync-jobs:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,6 +35,20 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: node scripts/fix-url-format.mjs --fix
 
+      - name: Verify jobs and remove dead links
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+        run: node scripts/verify-jobs.mjs
+
+      - name: Cleanup duplicates and bad data
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: node scripts/cleanup-jobs.mjs
+
       - name: Send daily job alerts
         continue-on-error: true
         run: |
@@ -44,7 +58,6 @@ jobs:
             -d '{"frequency":"daily"}'
 
       - name: Send weekly alerts (Mondays only)
-        if: github.event.schedule == '0 2 * * 1' || false
         continue-on-error: true
         run: |
           DAY=$(date +%u)
