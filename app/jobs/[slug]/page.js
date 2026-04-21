@@ -4,6 +4,7 @@ import TrustRing from '@/components/TrustRing'
 import JobDescription from '@/components/JobDescription'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import AssessmentCTA from '@/components/AssessmentCTA'
 
 export const revalidate = 300
 
@@ -448,19 +449,8 @@ export default async function JobDetailPage({ params }) {
             )}
           </div>
 
-          {/* Skill Assessment CTA */}
-          <div className="mt-3 bg-pw-card border border-pw-border rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">⚡</span>
-              <div className="text-sm font-bold text-pw-text1">Skill Assessment</div>
-            </div>
-            <p className="text-xs text-pw-text2 leading-relaxed mb-3">
-              Stand out from other applicants. Complete a timed skill challenge tailored to this role and get a verified score.
-            </p>
-            <Link href={'/assessment/' + job.id} className="block w-full py-2.5 rounded-lg border-2 border-pw-green text-pw-green font-bold text-sm text-center hover:bg-pw-greenDark transition-all">
-              Take assessment →
-            </Link>
-          </div>
+          {/* Skill Assessment - only for claimed companies with assessments enabled */}
+          <AssessmentCTA job={job} company={company} />
 
           {/* Company link */}
           {company?.slug && (
