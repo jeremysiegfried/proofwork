@@ -28,9 +28,50 @@ var SEARCHES = [
   'marketing manager', 'sales manager', 'project manager', 'business analyst',
   'machine learning', 'cloud engineer', 'cybersecurity', 'full stack developer',
   'scrum master', 'qa engineer', 'account manager', 'finance manager',
-  'hr manager', 'content manager', 'solutions architect', 'data analyst',
-  'nurse', 'teacher', 'solicitor', 'accountant', 'civil engineer',
-  'retail manager', 'chef', 'recruiter', 'customer service', 'operations manager',
+  // Tech & Engineering
+  'software engineer', 'frontend developer', 'backend developer', 'full stack developer',
+  'devops engineer', 'data engineer', 'data scientist', 'data analyst', 'machine learning',
+  'cloud engineer', 'cybersecurity', 'qa engineer', 'solutions architect', 'product manager',
+  'ux designer', 'ui designer', 'scrum master',
+  // Finance & Banking
+  'accountant', 'finance manager', 'financial analyst', 'auditor', 'bookkeeper',
+  'investment analyst', 'risk manager', 'payroll', 'credit controller',
+  // Healthcare
+  'nurse', 'healthcare assistant', 'doctor', 'physiotherapist', 'dental nurse',
+  'pharmacist', 'care worker', 'mental health', 'clinical', 'midwife',
+  // Sales & Marketing
+  'sales manager', 'account manager', 'business development', 'marketing manager',
+  'digital marketing', 'seo', 'content manager', 'social media manager',
+  'sales executive', 'telesales',
+  // Education
+  'teacher', 'teaching assistant', 'lecturer', 'tutor', 'school administrator',
+  // HR & Recruitment
+  'hr manager', 'recruiter', 'talent acquisition', 'hr advisor', 'learning development',
+  // Legal
+  'solicitor', 'paralegal', 'legal secretary', 'compliance officer',
+  // Construction & Trades
+  'site manager', 'quantity surveyor', 'civil engineer', 'electrician', 'plumber',
+  'carpenter', 'project manager construction', 'building surveyor',
+  // Hospitality & Catering
+  'chef', 'hotel manager', 'restaurant manager', 'bar staff', 'sous chef',
+  // Retail
+  'retail manager', 'store manager', 'visual merchandiser', 'retail assistant',
+  // Logistics & Warehouse
+  'warehouse operative', 'forklift driver', 'logistics manager', 'supply chain',
+  'delivery driver', 'transport manager', 'hgv driver',
+  // Admin & Office
+  'administrator', 'receptionist', 'office manager', 'personal assistant', 'secretary',
+  'executive assistant', 'data entry',
+  // Customer Service
+  'customer service', 'call centre', 'support analyst', 'helpdesk',
+  // Operations
+  'operations manager', 'business analyst', 'procurement', 'facilities manager',
+  // Creative & Media
+  'graphic designer', 'copywriter', 'video editor', 'photographer',
+  // Energy & Environment
+  'environmental consultant', 'sustainability', 'renewable energy',
+  // Manufacturing
+  'production manager', 'quality engineer', 'cnc machinist', 'manufacturing engineer',
 ]
 
 function generateSlug(title, company) {

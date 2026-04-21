@@ -223,9 +223,11 @@ export default function JobsList() {
       // Try our built-in city coordinates first (instant)
       var cityCoords = getCityCoords(clean)
       if (cityCoords) {
-        setPostcodeCoords({ lat: cityCoords.lat, lng: cityCoords.lng, name: clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase() })
+        var cityName = clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase()
+        setPostcodeCoords({ lat: cityCoords.lat, lng: cityCoords.lng, name: cityName })
         if (distance === 0) setDistance(25)
-        setRegion('All')
+        // Set region to filter database directly by this city
+        setRegion(cityName)
         setPostcodeLoading(false)
         return
       }
@@ -235,9 +237,11 @@ export default function JobsList() {
       var placesData = await placesRes.json()
       if (placesData.result && placesData.result.length > 0) {
         var place = placesData.result[0]
-        setPostcodeCoords({ lat: place.latitude, lng: place.longitude, name: place.name_1 || clean })
+        var placeName = place.name_1 || clean
+        setPostcodeCoords({ lat: place.latitude, lng: place.longitude, name: placeName })
         if (distance === 0) setDistance(25)
-        setRegion('All')
+        // Use place name as location filter
+        setRegion(placeName)
         setPostcodeLoading(false)
         return
       }
@@ -277,24 +281,6 @@ export default function JobsList() {
       q = q.ilike('remote_policy', '%Remote%')
     } else if (region !== 'All') {
       q = q.ilike('location', '%' + region + '%')
-    }
-
-    // When location search is active, also filter by nearby city names in DB
-    if (postcodeCoords && postcodeCoords.name && region === 'All') {
-      // Find all cities within the distance radius to build a DB filter
-      var nearbyCities = []
-      for (var city in CITY_COORDS) {
-        var c = CITY_COORDS[city]
-        var dist = haversine(postcodeCoords.lat, postcodeCoords.lng, c.lat, c.lng)
-        var maxDist = distance > 0 ? distance : 50
-        if (dist <= maxDist) nearbyCities.push(city)
-      }
-      if (nearbyCities.length > 0 && nearbyCities.length < 20) {
-        var locationClauses = nearbyCities.map(function(c) { return 'location.ilike.%' + c + '%' })
-        // Also include remote jobs
-        locationClauses.push('remote_policy.eq.Remote')
-        q = q.or(locationClauses.join(','))
-      }
     }
 
     if (remoteFilter) {
